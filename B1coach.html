@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Coach B1 - Quick Eval</title>
+    <title>English Coach B1 - Focus Mode</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,6 +14,11 @@
         body { font-family: 'Inter', sans-serif; }
         @keyframes progress { 0% { width: 0%; } 100% { width: 100%; } }
         .animate-progress { animation: progress 60s linear forwards; }
+        @keyframes flash {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(239, 68, 68, 0.2); }
+        }
+        .visual-countdown { animation: flash 1s infinite; }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -27,20 +32,14 @@
             return <i data-lucide={name} style={{width: size, height: size}} className={className}></i>;
         };
 
-        const apiKey = ""; 
-
         const App = () => {
             const [isRecording, setIsRecording] = useState(false);
             const [timeLeft, setTimeLeft] = useState(60);
             const [transcript, setTranscript] = useState('');
-            const [evaluation, setEvaluation] = useState(null);
-            const [status, setStatus] = useState('ready'); 
-            const [error, setError] = useState(null);
             const [copied, setCopied] = useState(false);
 
             const recognitionRef = useRef(null);
             const timerRef = useRef(null);
-            const finalTranscriptRef = useRef('');
 
             useEffect(() => {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -56,7 +55,6 @@
                             text += event.results[i][0].transcript + ' ';
                         }
                         setTranscript(text);
-                        finalTranscriptRef.current = text;
                     };
                 }
             }, []);
@@ -70,14 +68,10 @@
             };
 
             const startRecording = () => {
-                setError(null);
-                setEvaluation(null);
                 setTranscript('');
                 setCopied(false);
-                finalTranscriptRef.current = '';
                 setTimeLeft(60);
                 setIsRecording(true);
-                setStatus('recording');
                 try {
                     recognitionRef.current.start();
                     timerRef.current = setInterval(() => {
@@ -90,9 +84,7 @@
                         });
                     }, 1000);
                 } catch (e) {
-                    setError("マイクを起動できませんでした。");
                     setIsRecording(false);
-                    setStatus('error');
                 }
             };
 
@@ -108,84 +100,46 @@
                 document.body.removeChild(textArea);
             };
 
-            const handleQuickEval = async (text) => {
-                if (text.trim().split(' ').length < 3) {
-                    setStatus('ready');
-                    return;
-                }
-                
-                setStatus('processing');
-                setError(null);
-
-                const prompt = `Quick CEFR B1 check for: "${text}". 
-                Respond in JSON: {"grammar":1-5,"vocab":1-5,"fluency":1-5,"comment":"15 words max Japanese"}`;
-
-                try {
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: prompt }] }],
-                            generationConfig: { responseMimeType: "application/json" }
-                        })
-                    });
-
-                    if (!response.ok) throw new Error();
-
-                    const data = await response.json();
-                    const result = JSON.parse(data.candidates[0].content.parts[0].text);
-                    setEvaluation(result);
-                    setStatus('success');
-                } catch (err) {
-                    setError("簡易評価に失敗しました。コピーして外部Geminiで詳細解析してください。");
-                    setStatus('error');
-                }
-            };
-
-            useEffect(() => {
-                if (!isRecording && finalTranscriptRef.current.length > 5 && status === 'recording') {
-                    handleQuickEval(finalTranscriptRef.current);
-                }
-            }, [isRecording]);
-
-            const StarRating = ({ value, label }) => (
-                <div className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{label}</span>
-                    <div className="flex gap-1 text-amber-400">
-                        {[1, 2, 3, 4, 5].map(s => (
-                            <Icon key={s} name="star" size={14} className={s <= value ? "fill-amber-400" : "text-slate-200"} />
-                        ))}
-                    </div>
-                </div>
-            );
+            const isLastThreeSeconds = isRecording && timeLeft <= 3 && timeLeft > 0;
 
             return (
-                <div className="min-h-screen bg-slate-100 flex justify-center items-start p-4">
-                    <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-6">
+                <div className={`min-h-screen transition-colors duration-300 flex justify-center items-start p-4 ${isLastThreeSeconds ? 'visual-countdown' : 'bg-slate-100'}`}>
+                    <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden mt-6 border border-slate-200">
                         <div className="bg-slate-900 p-6 text-white text-center">
-                            <h1 className="text-lg font-black tracking-tighter italic">B1 QUICK CHECK</h1>
+                            <h1 className="text-lg font-black tracking-tighter italic">B1 SPEECH RECORDER</h1>
                             <p className="text-[10px] opacity-60 font-medium tracking-widest uppercase">Target 2026.10</p>
                         </div>
 
-                        {isRecording && <div className="h-1 w-full bg-indigo-100"><div className="h-full bg-indigo-500 animate-progress"></div></div>}
+                        {isRecording && (
+                            <div className="h-1.5 w-full bg-slate-100">
+                                <div className={`h-full animate-progress ${timeLeft <= 3 ? 'bg-red-500' : 'bg-indigo-500'}`}></div>
+                            </div>
+                        )}
 
                         <div className="p-8 space-y-8">
-                            <div className="text-center py-4">
-                                <div className={`text-7xl font-mono font-black tabular-nums tracking-tighter ${timeLeft <= 10 && isRecording ? 'text-red-500' : 'text-slate-900'}`}>
+                            <div className="text-center py-4 relative">
+                                {isLastThreeSeconds && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="text-[120px] font-black text-red-500 opacity-20 animate-ping">
+                                            {timeLeft}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className={`text-8xl font-mono font-black tabular-nums tracking-tighter transition-colors ${timeLeft <= 3 && isRecording ? 'text-red-600' : 'text-slate-900'}`}>
                                     {timeLeft}
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">
-                                    {status === 'recording' ? "Listening..." : status === 'processing' ? "Analyzing..." : "Ready"}
+                                <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-2 ${isLastThreeSeconds ? 'text-red-600' : 'text-slate-400'}`}>
+                                    {isRecording ? (timeLeft <= 3 ? "Hurry! Finish up!" : "Recording...") : "Ready to Speak"}
                                 </p>
                             </div>
 
                             <div className="flex justify-center">
                                 {!isRecording ? (
-                                    <button onClick={startRecording} disabled={status === 'processing'} className="w-24 h-24 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-indigo-200 transition-all active:scale-90 disabled:opacity-20">
+                                    <button onClick={startRecording} className="w-24 h-24 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-indigo-200 transition-all active:scale-90">
                                         <Icon name="mic" size={40} />
                                     </button>
                                 ) : (
-                                    <button onClick={stopAll} className="w-24 h-24 bg-red-500 text-white rounded-full flex items-center justify-center shadow-xl animate-pulse">
+                                    <button onClick={stopAll} className="w-24 h-24 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-xl animate-pulse">
                                         <Icon name="square" size={28} />
                                     </button>
                                 )}
@@ -193,7 +147,7 @@
 
                             <div className="space-y-3">
                                 <div className="flex justify-between items-end">
-                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transcript</h2>
+                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transcription</h2>
                                     {transcript && (
                                         <button onClick={handleCopy} className={`flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                                             <Icon name={copied ? "check" : "copy"} size={12} />
@@ -201,25 +155,17 @@
                                         </button>
                                     )}
                                 </div>
-                                <div className="bg-slate-50 p-6 rounded-3xl min-h-[140px] text-sm text-slate-700 leading-relaxed italic border border-slate-100 shadow-inner">
-                                    {transcript || "Speak to see your English text..."}
+                                <div className="bg-slate-50 p-6 rounded-3xl min-h-[160px] text-base text-slate-700 leading-relaxed italic border border-slate-100 shadow-inner">
+                                    {transcript || "The coach is off. Use the copy button to ask Gemini yourself!"}
                                 </div>
                             </div>
-
-                            {error && <div className="text-[11px] text-red-500 font-bold bg-red-50 p-3 rounded-xl text-center">{error}</div>}
-
-                            {evaluation && (
-                                <div className="bg-white p-6 rounded-3xl border-2 border-indigo-50 shadow-sm space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                                    <div className="space-y-1">
-                                        <StarRating value={evaluation.grammar} label="Grammar" />
-                                        <StarRating value={evaluation.vocab} label="Vocab" />
-                                        <StarRating value={evaluation.fluency} label="Fluency" />
-                                    </div>
-                                    <p className="text-[11px] text-indigo-700 font-bold leading-snug bg-indigo-50/50 p-3 rounded-xl text-center">
-                                        「{evaluation.comment}」
-                                    </p>
-                                </div>
-                            )}
+                            
+                            <div className="bg-indigo-50 p-4 rounded-2xl flex items-start gap-3">
+                                <Icon name="info" size={16} className="text-indigo-600 shrink-0 mt-0.5" />
+                                <p className="text-[11px] text-indigo-800 leading-snug">
+                                    録音終了後、ボタンを押してテキストをコピーし、本家Geminiに<b>「この英文をB1レベルで評価・添削して」</b>と送信してください。
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
