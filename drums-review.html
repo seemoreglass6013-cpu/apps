@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drum Practice Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:active {
+            transform: scale(0.98);
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-md mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Drum Review Sheet</h1>
+            <p class="text-sm text-gray-500">プロセス・レビュー・シート</p>
+        </header>
+
+        <div class="card p-6 space-y-6">
+            <!-- 1. 本日のTodo (自動選択/手動変更) -->
+            <section>
+                <label class="block text-sm font-bold text-gray-700 mb-2">1. 本日のTodo</label>
+                <select id="todo-select" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="月曜：Ritual (BPM 100) ブラシ">月曜：Ritual (BPM 100) ブラシ</option>
+                    <option value="火曜：Crazy Army (BPM 80) JLL">火曜：Crazy Army (BPM 80) JLL</option>
+                    <option value="水曜：Ritual (BPM 140-160) 7A">水曜：Ritual (BPM 140-160) 7A</option>
+                    <option value="木曜：Crazy Army (BPM 70) 5A">木曜：Crazy Army (BPM 70) 5A</option>
+                    <option value="金曜：Ritual (BPM 120-130) 5A">金曜：Ritual (BPM 120-130) 5A</option>
+                    <option value="土曜：Crazy & Ritual 苦手箇所">土曜：Crazy & Ritual 苦手箇所</option>
+                    <option value="日曜：フリートレーニング / 復習">日曜：フリートレーニング / 復習</option>
+                </select>
+            </section>
+
+            <!-- 2. 成長の深掘り -->
+            <section class="space-y-4">
+                <label class="block text-sm font-bold text-gray-700">2. 成長の深掘り（プロセス・レビュー）</label>
+                <div>
+                    <span class="text-xs text-blue-600 font-medium">● うまくいったところ</span>
+                    <textarea id="success" class="w-full mt-1 p-3 border border-gray-300 rounded-lg min-h-[80px]" placeholder="例：リラックスして叩けた"></textarea>
+                </div>
+                <div>
+                    <span class="text-xs text-red-600 font-medium">● うまくいかなかったところ</span>
+                    <textarea id="failure" class="w-full mt-1 p-3 border border-gray-300 rounded-lg min-h-[80px]" placeholder="例：左手のダブルが追いつかなかった"></textarea>
+                </div>
+            </section>
+
+            <!-- 3. 自分への褒めポイント -->
+            <section>
+                <label class="block text-sm font-bold text-gray-700 mb-2">3. 本日の「自分への褒めポイント」</label>
+                <textarea id="praise" class="w-full p-3 border border-gray-300 rounded-lg min-h-[80px]" placeholder="例：集中力が途切れずに30分完走できた！"></textarea>
+            </section>
+
+            <!-- アクションボタン -->
+            <div class="pt-4 space-y-3">
+                <button onclick="copyToClipboard()" class="w-full btn-primary py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
+                    <span>📋 記録をコピーする</span>
+                </button>
+                <button onclick="resetForm()" class="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                    内容をリセット
+                </button>
+            </div>
+        </div>
+
+        <!-- コピー通知アラート (カスタム) -->
+        <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-sm font-medium opacity-0 transition-opacity pointer-events-none">
+            コピーしました！メモアプリへ貼り付けてください。
+        </div>
+
+        <footer class="mt-8 text-center text-xs text-gray-400">
+            Keep Drumming! Daily Stick Control Practice
+        </footer>
+    </div>
+
+    <script>
+        // 今日の曜日に合わせてTodoを自動選択
+        window.onload = function() {
+            const dayOfWeek = new Date().getDay(); // 0: 日, 1: 月...
+            const select = document.getElementById('todo-select');
+            
+            // 1(月)〜6(土)に合わせる。0(日)は一番下へ
+            if (dayOfWeek === 0) {
+                select.selectedIndex = 6;
+            } else {
+                select.selectedIndex = dayOfWeek - 1;
+            }
+        };
+
+        function copyToClipboard() {
+            const todo = document.getElementById('todo-select').value;
+            const success = document.getElementById('success').value || "特になし";
+            const failure = document.getElementById('failure').value || "特になし";
+            const praise = document.getElementById('praise').value || "特になし";
+            
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
+
+            const text = `【ドラム練習記録】${dateStr}\n\n` +
+                         `1. 本日のTodo\n   ${todo}\n\n` +
+                         `2. 成長の深掘り\n   ・うまくいった点：${success}\n   ・うまくいかなかった点：${failure}\n\n` +
+                         `3. 自分への褒めポイント\n   ${praise}`;
+
+            // テキストエリアを作成してコピー (ブラウザ互換性のための従来の方法)
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast();
+            } catch (err) {
+                console.error('コピーに失敗しました', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        function resetForm() {
+            if (confirm('入力内容を消去しますか？')) {
+                document.getElementById('success').value = '';
+                document.getElementById('failure').value = '';
+                document.getElementById('praise').value = '';
+            }
+        }
+    </script>
+</body>
+</html>
