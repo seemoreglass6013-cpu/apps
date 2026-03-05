@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Coach - High Speed Edition</title>
+    <title>English Coach - Stable Edition</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,6 +12,8 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .loading-dot { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -20,14 +22,12 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         
-        const Icon = ({ name, size = 24, className = "" }) => {
+        const Icon = ({ name, size = 20, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
-                if (iconRef.current && window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
             }, [name]);
-            return <i data-lucide={name} className={`${className} inline-block w-[${size}px] h-[${size}px]`}></i>;
+            return <i data-lucide={name} style={{width: size, height: size}} className={className}></i>;
         };
 
         const apiKey = ""; // Runtime provides the key
@@ -35,17 +35,15 @@
         const App = () => {
             const [isRecording, setIsRecording] = useState(false);
             const [timeLeft, setTimeLeft] = useState(60);
-            const [audioUrl, setAudioUrl] = useState(null);
             const [transcript, setTranscript] = useState('');
             const [analysis, setAnalysis] = useState(null);
-            const [status, setStatus] = useState('ready'); // ready, recording, analyzing, error
+            const [isAnalyzing, setIsAnalyzing] = useState(false);
             const [error, setError] = useState(null);
 
-            const mediaRecorderRef = useRef(null);
             const recognitionRef = useRef(null);
             const timerRef = useRef(null);
 
-            // ブラウザの音声認識(Web Speech API)のセットアップ
+            // 高精度な音声認識のセットアップ
             useEffect(() => {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 if (SpeechRecognition) {
@@ -55,50 +53,31 @@
                     recognitionRef.current.lang = 'en-US';
 
                     recognitionRef.current.onresult = (event) => {
-                        let finalTranscript = '';
-                        for (let i = event.resultIndex; i < event.results.length; ++i) {
-                            if (event.results[i].isFinal) {
-                                finalTranscript += event.results[i][0].transcript + ' ';
-                            }
+                        let currentText = '';
+                        for (let i = 0; i < event.results.length; i++) {
+                            currentText += event.results[i][0].transcript + ' ';
                         }
-                        if (finalTranscript) {
-                            setTranscript(prev => prev + finalTranscript);
-                        }
+                        setTranscript(currentText);
                     };
+
+                    recognitionRef.current.onerror = (event) => {
+                        console.error("Speech Recognition Error:", event.error);
+                        if (event.error === 'not-allowed') setError("マイクの使用が許可されていません。");
+                    };
+                } else {
+                    setError("このブラウザは音声認識をサポートしていません。Chromeを使用してください。");
                 }
             }, []);
 
-            const startRecording = async () => {
+            const startRecording = () => {
                 setTranscript('');
                 setAnalysis(null);
                 setError(null);
-                setAudioUrl(null);
+                setIsRecording(true);
+                setTimeLeft(60);
 
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorderRef.current = new MediaRecorder(stream);
-                    const chunks = [];
-
-                    mediaRecorderRef.current.ondataavailable = (e) => chunks.push(e.data);
-                    mediaRecorderRef.current.onstop = () => {
-                        const blob = new Blob(chunks, { type: 'audio/wav' });
-                        setAudioUrl(URL.createObjectURL(blob));
-                        // 解析へ進む
-                        if (transcript.length > 5) {
-                            analyzeText(transcript);
-                        } else {
-                            setStatus('ready');
-                            setError("Speech was too short to analyze.");
-                        }
-                    };
-
-                    mediaRecorderRef.current.start();
-                    if (recognitionRef.current) recognitionRef.current.start();
-                    
-                    setIsRecording(true);
-                    setStatus('recording');
-                    setTimeLeft(60);
-
+                    recognitionRef.current.start();
                     timerRef.current = setInterval(() => {
                         setTimeLeft(prev => {
                             if (prev <= 1) {
@@ -108,134 +87,186 @@
                             return prev - 1;
                         });
                     }, 1000);
-                } catch (err) {
-                    setError("Microphone access denied.");
+                } catch (e) {
+                    console.error(e);
                 }
             };
 
             const stopRecording = () => {
-                if (mediaRecorderRef.current && isRecording) {
-                    mediaRecorderRef.current.stop();
-                    if (recognitionRef.current) recognitionRef.current.stop();
+                if (isRecording) {
+                    recognitionRef.current.stop();
                     clearInterval(timerRef.current);
                     setIsRecording(false);
-                    setStatus('analyzing');
+                    // 録音終了後に自動で解析
                 }
             };
 
-            const analyzeText = async (textToAnalyze) => {
-                setStatus('analyzing');
+            // 手動でも解析を実行できるように
+            const triggerAnalysis = async () => {
+                if (!transcript || transcript.length < 10) {
+                    setError("解析するにはもう少し長く話してください。");
+                    return;
+                }
                 
-                const systemPrompt = `You are a CEFR B1 English Coach. Analyze the input text.
-                Provide feedback in JSON: 
-                {"evaluation": "Assessment in Japanese", 
-                 "tips": ["Tip 1 in JP", "Tip 2 in JP"], 
-                 "vocab": {"old": "advanced_version"}, 
-                 "rewrite": "B1+ level rewrite"}`;
+                setIsAnalyzing(true);
+                setError(null);
+
+                const prompt = `
+                You are a CEFR B1 English Coach. 
+                Analyze this English speech: "${transcript}"
+                
+                Return ONLY a JSON object with these exact keys:
+                {
+                  "evaluation": "CEFR B1達成に向けた評価（日本語）",
+                  "tips": ["具体的な改善点1", "具体的な改善点2"],
+                  "vocabulary": {"used_word": "B1+ upgrade_word"},
+                  "rewrite": "A natural B1+ level rewrite of the text"
+                }
+                `;
 
                 try {
                     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: `Analyze my speech to help me reach B1 level: "${textToAnalyze}"` }] }],
-                            systemInstruction: { parts: [{ text: systemPrompt }] },
-                            generationConfig: { responseMimeType: "application/json" }
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { 
+                                responseMimeType: "application/json",
+                                temperature: 0.7 
+                            }
                         })
                     });
 
-                    if (!response.ok) throw new Error();
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.error?.message || "API Error");
+                    }
+
                     const result = await response.json();
-                    const data = JSON.parse(result.candidates[0].content.parts[0].text);
-                    setAnalysis(data);
-                    setStatus('ready');
+                    const textResponse = result.candidates[0].content.parts[0].text;
+                    setAnalysis(JSON.parse(textResponse));
                 } catch (err) {
-                    setError("AI analysis failed. The transcript is available above.");
-                    setStatus('ready');
+                    console.error("Analysis Error:", err);
+                    setError("解析中にエラーが発生しました。もう一度「解析する」を押してください。");
+                } finally {
+                    setIsAnalyzing(false);
                 }
             };
 
+            useEffect(() => {
+                if (!isRecording && transcript.length > 10 && !analysis && !isAnalyzing) {
+                    triggerAnalysis();
+                }
+            }, [isRecording]);
+
             return (
-                <div className="min-h-screen flex flex-col items-center p-4 md:p-8">
-                    <div className="max-w-2xl w-full bg-white rounded-3xl shadow-xl overflow-hidden">
-                        <div className="bg-indigo-600 p-6 text-white text-center">
-                            <h1 className="text-2xl font-bold">English Coach B1</h1>
-                            <p className="text-indigo-100 text-sm">Real-time Feedback Edition</p>
+                <div className="min-h-screen bg-slate-50 flex justify-center p-4">
+                    <div className="max-w-xl w-full bg-white rounded-3xl shadow-xl overflow-hidden self-start mt-8">
+                        <div className="bg-blue-600 p-6 text-white text-center">
+                            <h1 className="text-2xl font-black tracking-tight">ENGLISH B1 COACH</h1>
+                            <p className="text-blue-100 text-xs mt-1">Goal: Advanced B1 by Oct 2026</p>
                         </div>
 
-                        <div className="p-8 space-y-8">
-                            {/* Timer */}
-                            <div className="text-center">
-                                <div className={`text-7xl font-mono font-bold ${timeLeft <= 10 ? 'text-red-500' : 'text-slate-800'}`}>
-                                    0:{timeLeft.toString().padStart(2, '0')}
+                        <div className="p-6 space-y-6">
+                            {/* Timer and Status */}
+                            <div className="flex flex-col items-center py-4">
+                                <div className={`text-6xl font-mono font-bold ${timeLeft <= 10 && isRecording ? 'text-red-500' : 'text-slate-800'}`}>
+                                    {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                                 </div>
-                                {status === 'analyzing' && <div className="text-indigo-500 font-bold animate-pulse mt-2">AI Analyzing...</div>}
+                                <div className="mt-2 flex items-center gap-2">
+                                    {isRecording && <span className="flex h-3 w-3 rounded-full bg-red-500 animate-pulse"></span>}
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                        {isRecording ? "Recording..." : isAnalyzing ? "AI Analyzing..." : "Ready"}
+                                    </span>
+                                </div>
                             </div>
 
-                            {/* Controls */}
-                            <div className="flex justify-center gap-6">
+                            {/* Main Button */}
+                            <div className="flex justify-center">
                                 {!isRecording ? (
-                                    <button onClick={startRecording} disabled={status === 'analyzing'} className="w-20 h-20 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50">
+                                    <button 
+                                        onClick={startRecording}
+                                        disabled={isAnalyzing}
+                                        className="w-20 h-20 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition active:scale-95 disabled:opacity-50"
+                                    >
                                         <Icon name="mic" size={32} />
                                     </button>
                                 ) : (
-                                    <button onClick={stopRecording} className="w-20 h-20 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                                        <Icon name="square" size={32} />
+                                    <button 
+                                        onClick={stopRecording}
+                                        className="w-20 h-20 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg animate-pulse"
+                                    >
+                                        <Icon name="square" size={28} />
                                     </button>
                                 )}
                             </div>
 
-                            {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100">{error}</div>}
-
-                            {/* Transcript Area */}
-                            <div className="space-y-4">
-                                <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                                    <Icon name="file-text" size={18} /> Transcript (Real-time)
-                                </h2>
-                                <div className="bg-slate-50 p-4 rounded-xl min-h-[80px] text-slate-600 border border-slate-100">
-                                    {transcript || (isRecording ? "Listening..." : "Your speech will appear here.")}
-                                </div>
-                            </div>
-
-                            {/* Audio Player */}
-                            {audioUrl && (
-                                <div className="flex items-center gap-4 bg-indigo-50 p-3 rounded-xl">
-                                    <Icon name="play" size={20} className="text-indigo-600" />
-                                    <audio src={audioUrl} controls className="w-full h-8" />
+                            {error && (
+                                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-xs border border-red-100 flex items-start gap-2">
+                                    <Icon name="alert-circle" size={16} className="shrink-0" />
+                                    <span>{error}</span>
                                 </div>
                             )}
 
-                            {/* Analysis Section */}
+                            {/* Transcript Box */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-slate-500 text-xs font-bold uppercase">
+                                    <span>Your Speech</span>
+                                    {transcript.length > 0 && !isRecording && !isAnalyzing && !analysis && (
+                                        <button onClick={triggerAnalysis} className="text-blue-600 hover:underline">Retry Analysis</button>
+                                    )}
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-2xl min-h-[100px] text-slate-700 border border-slate-100 leading-relaxed shadow-inner">
+                                    {transcript || <span className="text-slate-300">Start talking to see transcription...</span>}
+                                </div>
+                            </div>
+
+                            {/* Analysis Result */}
+                            {isAnalyzing && (
+                                <div className="space-y-4 py-4">
+                                    <div className="h-4 bg-slate-100 rounded-full w-full overflow-hidden">
+                                        <div className="h-full bg-blue-500 w-1/2 animate-[shimmer_1.5s_infinite] origin-left"></div>
+                                    </div>
+                                    <p className="text-center text-xs text-slate-400 font-medium">AI Coach is evaluating your CEFR B1 progress...</p>
+                                </div>
+                            )}
+
                             {analysis && (
-                                <div className="space-y-4 pt-4 border-t border-slate-100">
-                                    <div className="bg-white border-2 border-indigo-100 p-5 rounded-2xl shadow-sm">
-                                        <h3 className="font-bold text-indigo-700 mb-2">CEFR Assessment</h3>
-                                        <p className="text-sm text-slate-700">{analysis.evaluation}</p>
+                                <div className="space-y-6 pt-4 border-t border-slate-100 animate-in fade-in duration-700">
+                                    <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
+                                        <h3 className="text-blue-800 font-bold text-sm mb-2 flex items-center gap-2">
+                                            <Icon name="award" /> Coach's Evaluation
+                                        </h3>
+                                        <p className="text-blue-900 text-sm leading-relaxed">{analysis.evaluation}</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                                            <h4 className="font-bold text-amber-700 text-sm mb-2">Key Tips</h4>
-                                            <ul className="text-xs space-y-1">
-                                                {analysis.tips.map((t, i) => <li key={i}>• {t}</li>)}
+                                        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                                            <h4 className="text-amber-800 font-bold text-xs mb-3 flex items-center gap-2">
+                                                <Icon name="check-circle" /> Key Improvements
+                                            </h4>
+                                            <ul className="text-xs text-amber-900 space-y-2">
+                                                {analysis.tips.map((tip, i) => <li key={i} className="flex gap-2"><span>•</span>{tip}</li>)}
                                             </ul>
                                         </div>
-                                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                                            <h4 className="font-bold text-emerald-700 text-sm mb-2">Upgrades</h4>
-                                            <div className="text-xs space-y-1">
-                                                {Object.entries(analysis.vocab).map(([o, n], i) => (
-                                                    <div key={i} className="flex justify-between border-b border-emerald-100">
-                                                        <span className="line-through text-slate-400">{o}</span>
-                                                        <span className="font-bold">→ {n}</span>
+                                        <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                                            <h4 className="text-emerald-800 font-bold text-xs mb-3 flex items-center gap-2">
+                                                <Icon name="trending-up" /> Word Upgrades
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {Object.entries(analysis.vocabulary).map(([old, updated], i) => (
+                                                    <div key={i} className="flex justify-between items-center text-[10px] border-b border-emerald-100 pb-1">
+                                                        <span className="text-slate-400 line-through">{old}</span>
+                                                        <span className="font-bold text-emerald-700">{updated}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-800 p-5 rounded-2xl text-slate-200">
-                                        <h4 className="text-blue-400 font-bold text-sm mb-2">B1+ Recommended Version</h4>
-                                        <p className="text-sm italic">"{analysis.rewrite}"</p>
+                                    <div className="bg-slate-900 p-6 rounded-2xl text-slate-100 shadow-xl">
+                                        <h4 className="text-blue-400 font-bold text-xs mb-3 uppercase tracking-widest">Recommended B1+ Rewrite</h4>
+                                        <p className="text-sm italic leading-relaxed opacity-90">"{analysis.rewrite}"</p>
                                     </div>
                                 </div>
                             )}
