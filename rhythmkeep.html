@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Rhythm Metronome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .active-beat {
+            transform: scale(1.2);
+            background-color: #3b82f6 !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+        }
+        .accent-beat {
+            background-color: #ef4444 !important; /* Red for accent */
+        }
+        input[type="range"] {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100">
+        <h1 class="text-2xl font-bold text-slate-800 mb-6 text-center">Rhythm Master Pro</h1>
+
+        <!-- BPM Display -->
+        <div class="text-center mb-4">
+            <div class="text-6xl font-black text-blue-600 tracking-tighter" id="bpmDisplay">120</div>
+            <div class="text-slate-400 font-medium uppercase text-xs tracking-widest">Beats Per Minute</div>
+        </div>
+
+        <!-- BPM Slider -->
+        <div class="mb-6">
+            <input type="range" id="bpmSlider" min="30" max="250" value="120" 
+                   class="w-full h-2 bg-slate-200 rounded-lg appearance-none accent-blue-600">
+            <div class="flex justify-between mt-2 text-[10px] text-slate-400 font-bold">
+                <span>30</span>
+                <span>140</span>
+                <span>250</span>
+            </div>
+        </div>
+
+        <!-- Beat Indicators -->
+        <div class="flex justify-center gap-3 mb-6" id="indicatorContainer">
+            <!-- Dynamically generated -->
+        </div>
+
+        <!-- Volume Control -->
+        <div class="mb-6 flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5" 
+                   class="flex-grow h-1.5 bg-slate-200 rounded-lg appearance-none accent-slate-500">
+        </div>
+
+        <!-- Settings Toggles -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span class="text-xs font-bold text-slate-600">アクセント</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="accentToggle" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span class="text-xs font-bold text-slate-600">拍子</span>
+                <select id="timeSignature" class="bg-transparent text-xs font-bold text-blue-600 focus:outline-none">
+                    <option value="2">2/4</option>
+                    <option value="3">3/4</option>
+                    <option value="4" selected>4/4</option>
+                    <option value="6">6/8</option>
+                    <option value="8">8/8</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Mode Selection -->
+        <div class="flex gap-2 mb-6">
+            <button onclick="setMode('normal')" id="btn-normal" class="mode-btn flex-1 py-2 text-[10px] font-bold rounded-lg border-2 border-blue-600 bg-blue-600 text-white transition-all">通常</button>
+            <button onclick="setMode('step')" id="btn-step" class="mode-btn flex-1 py-2 text-[10px] font-bold rounded-lg border-2 border-slate-200 text-slate-600 transition-all">段階変化</button>
+            <button onclick="setMode('mute')" id="btn-mute" class="mode-btn flex-1 py-2 text-[10px] font-bold rounded-lg border-2 border-slate-200 text-slate-600 transition-all">消音練習</button>
+        </div>
+
+        <!-- Dynamic Settings Area -->
+        <div id="settingsArea" class="bg-slate-50 p-4 rounded-2xl mb-6 text-sm text-slate-700 min-h-[100px] border border-slate-100 shadow-inner">
+            <!-- Normal Mode -->
+            <div id="settings-normal" class="flex items-center justify-center h-full">
+                <p class="text-slate-400 italic text-xs">基本のメトロノーム設定です</p>
+            </div>
+
+            <!-- Step Mode -->
+            <div id="settings-step" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">変化量 (BPM)</span>
+                    <input type="number" id="stepAmount" value="5" class="w-16 p-1 bg-white border rounded text-center font-bold text-blue-600">
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">間隔 (小節)</span>
+                    <input type="number" id="stepInterval" value="4" class="w-16 p-1 bg-white border rounded text-center font-bold text-blue-600">
+                </div>
+            </div>
+
+            <!-- Mute Mode -->
+            <div id="settings-mute" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">鳴らす (小節)</span>
+                    <input type="number" id="muteSoundBars" value="2" class="w-16 p-1 bg-white border rounded text-center font-bold text-blue-600">
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">消す (小節)</span>
+                    <input type="number" id="muteSilentBars" value="2" class="w-16 p-1 bg-white border rounded text-center font-bold text-blue-600">
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div class="mb-8 flex items-center justify-between px-2">
+            <div class="flex flex-col">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Practice Timer</span>
+                <span id="timerLabel" class="text-xs font-bold text-slate-600">残り時間</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <input type="number" id="timerValue" value="5" min="1" class="w-12 p-1 border-b-2 border-slate-200 bg-transparent text-center font-bold text-blue-600 focus:border-blue-600 outline-none">
+                <span class="text-xs text-slate-400">分</span>
+                <span id="timerDisplay" class="text-xl font-mono font-black text-blue-600 hidden tabular-nums">05:00</span>
+            </div>
+        </div>
+
+        <!-- Main Controls -->
+        <div class="flex items-center justify-center">
+            <button id="startBtn" class="w-24 h-24 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 transition-all active:scale-90 border-4 border-white">
+                <svg id="playIcon" class="w-12 h-12 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="pauseIcon" class="w-12 h-12 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Audio Context Setup
+        let audioCtx = null;
+        let masterGain = null;
+        let nextClickTime = 0.0;
+        let timerID = null;
+        let isRunning = false;
+        
+        // State
+        let bpm = 120;
+        let beatsPerMeasure = 4;
+        let currentBeat = 0;
+        let currentMeasure = 0;
+        let mode = 'normal';
+        
+        // Timer State
+        let practiceTimeLeft = 0;
+        let practiceTimerID = null;
+
+        // UI Elements
+        const bpmSlider = document.getElementById('bpmSlider');
+        const bpmDisplay = document.getElementById('bpmDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const indicatorContainer = document.getElementById('indicatorContainer');
+        const timeSignatureSelect = document.getElementById('timeSignature');
+        const timerValueInput = document.getElementById('timerValue');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const accentToggle = document.getElementById('accentToggle');
+        const volumeSlider = document.getElementById('volumeSlider');
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = volumeSlider.value;
+                masterGain.connect(audioCtx.destination);
+            }
+        }
+
+        function updateIndicators() {
+            indicatorContainer.innerHTML = '';
+            for (let i = 0; i < beatsPerMeasure; i++) {
+                const div = document.createElement('div');
+                div.className = 'w-4 h-4 rounded-full bg-slate-200 transition-all duration-75';
+                div.id = `beat-${i}`;
+                indicatorContainer.appendChild(div);
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.add('text-slate-600', 'border-slate-200');
+            });
+            document.getElementById(`btn-${newMode}`).classList.remove('text-slate-600', 'border-slate-200');
+            document.getElementById(`btn-${newMode}`).classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+
+            ['normal', 'step', 'mute'].forEach(m => {
+                document.getElementById(`settings-${m}`).classList.toggle('hidden', m !== newMode);
+            });
+            
+            currentMeasure = 0;
+        }
+
+        function scheduleClick(beatNumber, time) {
+            // Check Mute Mode
+            if (mode === 'mute') {
+                const soundBars = parseInt(document.getElementById('muteSoundBars').value) || 1;
+                const silentBars = parseInt(document.getElementById('muteSilentBars').value) || 1;
+                const cyclePosition = currentMeasure % (soundBars + silentBars);
+                if (cyclePosition >= soundBars) return;
+            }
+
+            const osc = audioCtx.createOscillator();
+            const envelope = audioCtx.createGain();
+
+            // Accent Logic: 1st beat frequency
+            const isFirstBeat = (beatNumber === 0);
+            const useAccent = accentToggle.checked;
+            
+            osc.frequency.value = (isFirstBeat && useAccent) ? 1200 : 800;
+            
+            // Adjust volume slightly for accent if enabled
+            const volumeBoost = (isFirstBeat && useAccent) ? 1.2 : 0.8;
+            
+            envelope.gain.setValueAtTime(0, time);
+            envelope.gain.linearRampToValueAtTime(volumeBoost, time + 0.005);
+            envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+
+            osc.connect(envelope);
+            envelope.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
+
+        function nextBeat() {
+            const secondsPerBeat = 60.0 / bpm;
+            nextClickTime += secondsPerBeat;
+
+            currentBeat++;
+            if (currentBeat >= beatsPerMeasure) {
+                currentBeat = 0;
+                currentMeasure++;
+                handleMeasureEnd();
+            }
+        }
+
+        function handleMeasureEnd() {
+            if (mode === 'step') {
+                const interval = parseInt(document.getElementById('stepInterval').value) || 4;
+                const amount = parseInt(document.getElementById('stepAmount').value) || 5;
+                
+                if (currentMeasure > 0 && currentMeasure % interval === 0) {
+                    bpm += amount;
+                    if (bpm > 250) bpm = 250;
+                    if (bpm < 30) bpm = 30;
+                    updateBpmUI();
+                }
+            }
+        }
+
+        function updateBpmUI() {
+            bpmDisplay.innerText = bpm;
+            bpmSlider.value = bpm;
+        }
+
+        function scheduler() {
+            while (nextClickTime < audioCtx.currentTime + 0.1) {
+                scheduleClick(currentBeat, nextClickTime);
+                
+                const beatToHighlight = currentBeat;
+                const highlightTime = (nextClickTime - audioCtx.currentTime) * 1000;
+                
+                setTimeout(() => {
+                    const indicators = indicatorContainer.querySelectorAll('div');
+                    indicators.forEach((el, i) => {
+                        el.classList.remove('active-beat', 'accent-beat');
+                        if (i === beatToHighlight) {
+                            el.classList.add('active-beat');
+                            if (i === 0 && accentToggle.checked) {
+                                el.classList.add('accent-beat');
+                            }
+                        }
+                    });
+                }, Math.max(0, highlightTime));
+
+                nextBeat();
+            }
+            timerID = setTimeout(scheduler, 25);
+        }
+
+        function toggleMetronome() {
+            initAudio();
+
+            isRunning = !isRunning;
+
+            if (isRunning) {
+                currentBeat = 0;
+                currentMeasure = 0;
+                nextClickTime = audioCtx.currentTime + 0.05;
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                scheduler();
+                startTimer();
+            } else {
+                clearTimeout(timerID);
+                stopTimer();
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                document.querySelectorAll('#indicatorContainer div').forEach(el => el.classList.remove('active-beat', 'accent-beat'));
+            }
+        }
+
+        function startTimer() {
+            const mins = parseInt(timerValueInput.value);
+            if (isNaN(mins) || mins <= 0) return;
+
+            practiceTimeLeft = mins * 60;
+            timerDisplay.classList.remove('hidden');
+            timerValueInput.classList.add('hidden');
+            updateTimerDisplay();
+            
+            practiceTimerID = setInterval(() => {
+                practiceTimeLeft--;
+                updateTimerDisplay();
+                if (practiceTimeLeft <= 0) {
+                    toggleMetronome();
+                    showFinishMessage();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(practiceTimerID);
+            timerDisplay.classList.add('hidden');
+            timerValueInput.classList.remove('hidden');
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(practiceTimeLeft / 60);
+            const s = practiceTimeLeft % 60;
+            timerDisplay.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function showFinishMessage() {
+            const msg = document.createElement('div');
+            msg.className = "fixed top-10 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-8 py-4 rounded-2xl shadow-2xl z-50 font-bold border-2 border-white animate-bounce";
+            msg.innerText = "Time Up! Great job! 🎸";
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 4000);
+        }
+
+        // Listeners
+        bpmSlider.addEventListener('input', (e) => {
+            bpm = parseInt(e.target.value);
+            bpmDisplay.innerText = bpm;
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            if (masterGain) {
+                masterGain.gain.setTargetAtTime(parseFloat(e.target.value), audioCtx.currentTime, 0.02);
+            }
+        });
+
+        startBtn.addEventListener('click', toggleMetronome);
+
+        timeSignatureSelect.addEventListener('change', (e) => {
+            beatsPerMeasure = parseInt(e.target.value);
+            updateIndicators();
+        });
+
+        // Initialize
+        updateIndicators();
+        setMode('normal');
+
+    </script>
+</body>
+</html>
+
