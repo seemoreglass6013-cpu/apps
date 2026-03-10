@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Polyrhythm & Odd Meter Metronome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'sans-serif';
+            overflow: hidden; /* Prevent scrolling */
+        }
+        .active-dot-main {
+            background-color: #38bdf8 !important;
+            box-shadow: 0 0 12px #38bdf8;
+            transform: scale(1.1);
+        }
+        .active-dot-sub {
+            background-color: #facc15 !important;
+            box-shadow: 0 0 10px #facc15;
+            transform: scale(1.1);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            width: 18px;
+            height: 18px;
+            background: #38bdf8;
+            cursor: pointer;
+            border-radius: 50%;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2">
+
+    <div class="max-w-sm w-full bg-slate-800 rounded-2xl p-4 shadow-2xl border border-slate-700">
+        <!-- Header & Timer Display -->
+        <div class="flex justify-between items-center mb-2 px-1">
+            <h1 class="text-sm font-bold text-sky-400">Metronome</h1>
+            <div id="timerDisplay" class="text-xs font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-700 text-slate-400">
+                Timer: OFF
+            </div>
+        </div>
+
+        <!-- BPM Display & Slider -->
+        <div class="mb-3 text-center relative">
+            <div class="flex items-baseline justify-center gap-1">
+                <span class="text-5xl font-black text-white" id="bpmDisplay">120</span>
+                <span class="text-slate-400 text-xs font-medium">BPM</span>
+            </div>
+            <input type="range" id="bpmSlider" min="30" max="250" value="120" 
+                   class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer mt-1">
+        </div>
+
+        <!-- Controls Row: Accent & Timer Set -->
+        <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="flex items-center justify-between bg-slate-900/50 p-2 rounded-xl border border-slate-700">
+                <span class="text-[10px] font-semibold text-slate-300">Accent</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="accentToggle" class="sr-only peer" checked>
+                    <div class="w-8 h-4 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-sky-500"></div>
+                </label>
+            </div>
+            <div class="flex items-center justify-between bg-slate-900/50 p-1.5 rounded-xl border border-slate-700">
+                <span class="text-[10px] font-semibold text-slate-300 ml-1">Timer</span>
+                <select id="timerSelect" class="bg-transparent text-[10px] text-sky-400 font-bold focus:outline-none">
+                    <option value="0">OFF</option>
+                    <option value="60">1m</option>
+                    <option value="180">3m</option>
+                    <option value="300">5m</option>
+                    <option value="600">10m</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Settings Grid -->
+        <div class="space-y-2.5 mb-3">
+            <!-- Subdivisions -->
+            <div>
+                <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1">Subdivision</label>
+                <div class="grid grid-cols-6 gap-1" id="subdivisionButtons">
+                    <button class="sub-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-val="1">1</button>
+                    <button class="sub-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-val="2">2</button>
+                    <button class="sub-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-val="3">3</button>
+                    <button class="sub-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-val="4">4</button>
+                    <button class="sub-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-val="5">5</button>
+                    <button class="sub-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-val="7">7</button>
+                </div>
+            </div>
+
+            <!-- Polyrhythms & Beats -->
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1">Polyrhythm</label>
+                    <div class="grid grid-cols-2 gap-1">
+                        <button class="spec-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-type="2-3">2:3</button>
+                        <button class="spec-btn py-1 rounded bg-slate-700 border border-slate-600 text-[10px]" data-type="4-3">4:3</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1">Beats</label>
+                    <div class="flex items-center justify-between bg-slate-900 rounded p-1 border border-slate-700">
+                        <button id="minusBeats" class="text-sky-400 px-2 text-xs">-</button>
+                        <span id="beatsDisplay" class="text-xs font-bold">4</span>
+                        <button id="plusBeats" class="text-sky-400 px-2 text-xs">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizers -->
+        <div class="space-y-1.5 mb-3 bg-slate-900/30 p-2 rounded-xl">
+            <div id="visualizerMain" class="flex justify-center gap-1.5 h-2.5"></div>
+            <div id="subVisualizerContainer" class="hidden">
+                <div id="visualizerSub" class="flex justify-center gap-1.5 h-2.5 mt-1"></div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <button id="startStopBtn" class="w-full py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-900 font-extrabold text-base shadow-lg transition active:scale-95 uppercase tracking-widest">
+            START
+        </button>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isRunning = false;
+        let tempo = 120;
+        let beatsPerMeasure = 4;
+        let subdivision = 1;
+        let currentSpecial = null; 
+        
+        let nextNoteTime = 0.0;
+        let nextSubNoteTime = 0.0;
+        let lookahead = 25.0; 
+        let scheduleAheadTime = 0.1; 
+        let timerID;
+        let countdownID;
+
+        let tickCount = 0;
+        let subTickCount = 0;
+        let remainingSeconds = 0;
+
+        const startStopBtn = document.getElementById('startStopBtn');
+        const bpmSlider = document.getElementById('bpmSlider');
+        const bpmDisplay = document.getElementById('bpmDisplay');
+        const beatsDisplay = document.getElementById('beatsDisplay');
+        const accentToggle = document.getElementById('accentToggle');
+        const timerSelect = document.getElementById('timerSelect');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const subBtns = document.querySelectorAll('.sub-btn');
+        const specBtns = document.querySelectorAll('.spec-btn');
+        const visualizerMain = document.getElementById('visualizerMain');
+        const visualizerSub = document.getElementById('visualizerSub');
+        const subVisualizerContainer = document.getElementById('subVisualizerContainer');
+
+        function updateVisualizers() {
+            visualizerMain.innerHTML = '';
+            visualizerSub.innerHTML = '';
+            for (let i = 0; i < beatsPerMeasure; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'w-2 h-2 rounded-full bg-slate-700 transition-all duration-75';
+                dot.id = `main-dot-${i}`;
+                visualizerMain.appendChild(dot);
+            }
+            if (currentSpecial) {
+                subVisualizerContainer.classList.remove('hidden');
+                for (let i = 0; i < 3; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'w-2 h-2 rounded-full bg-slate-700 transition-all duration-75';
+                    dot.id = `sub-dot-${i}`;
+                    visualizerSub.appendChild(dot);
+                }
+            } else {
+                subVisualizerContainer.classList.add('hidden');
+            }
+        }
+
+        function formatTime(sec) {
+            if (sec <= 0) return "OFF";
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function playSound(time, pitch, volume = 1.0, type = 'sine') {
+            const osc = audioCtx.createOscillator();
+            const envelope = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(pitch, time);
+            envelope.gain.setValueAtTime(0, time);
+            envelope.gain.linearRampToValueAtTime(volume * 0.4, time + 0.005);
+            envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+            osc.connect(envelope);
+            envelope.connect(audioCtx.destination);
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
+
+        function scheduler() {
+            const secondsPerBeat = 60.0 / tempo;
+            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+                if (currentSpecial) {
+                    const isCycleStart = (tickCount % beatsPerMeasure === 0);
+                    const p = (isCycleStart && accentToggle.checked) ? 1600 : 880;
+                    playSound(nextNoteTime, p, 0.8, 'triangle');
+                    const beatIdx = tickCount % beatsPerMeasure;
+                    setTimeout(() => {
+                        const dots = visualizerMain.querySelectorAll('div');
+                        dots.forEach(d => d.classList.remove('active-dot-main'));
+                        const target = document.getElementById(`main-dot-${beatIdx}`);
+                        if (target) target.classList.add('active-dot-main');
+                    }, 0);
+                    nextNoteTime += secondsPerBeat;
+                    tickCount++;
+                } else {
+                    const isMainBeat = (tickCount % subdivision === 0);
+                    const isDownbeat = (tickCount % (beatsPerMeasure * subdivision) === 0);
+                    let pitch = 440; let vol = 0.2; let type = 'sine';
+                    if (isMainBeat) { pitch = 880; vol = 0.6; type = 'triangle'; }
+                    if (isDownbeat && accentToggle.checked) { pitch = 1600; vol = 1.0; }
+                    playSound(nextNoteTime, pitch, vol, type);
+                    if (isMainBeat) {
+                        const beatIdx = Math.floor(tickCount / subdivision) % beatsPerMeasure;
+                        setTimeout(() => {
+                            const dots = visualizerMain.querySelectorAll('div');
+                            dots.forEach(d => d.classList.remove('active-dot-main'));
+                            const target = document.getElementById(`main-dot-${beatIdx}`);
+                            if (target) target.classList.add('active-dot-main');
+                        }, 0);
+                    }
+                    nextNoteTime += (secondsPerBeat / subdivision);
+                    tickCount++;
+                }
+            }
+            if (currentSpecial) {
+                const cycleBeats = currentSpecial === '2-3' ? 2 : 4;
+                const subInterval = (secondsPerBeat * cycleBeats) / 3;
+                while (nextSubNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+                    playSound(nextSubNoteTime, 600, 0.6, 'sine');
+                    const subIdx = subTickCount % 3;
+                    setTimeout(() => {
+                        const dots = visualizerSub.querySelectorAll('div');
+                        dots.forEach(d => d.classList.remove('active-dot-sub'));
+                        const target = document.getElementById(`sub-dot-${subIdx}`);
+                        if (target) target.classList.add('active-dot-sub');
+                    }, 0);
+                    nextSubNoteTime += subInterval;
+                    subTickCount++;
+                }
+            }
+            timerID = setTimeout(scheduler, lookahead);
+        }
+
+        function toggleMetronome() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (!isRunning) {
+                tickCount = 0; subTickCount = 0;
+                const startTime = audioCtx.currentTime + 0.1;
+                nextNoteTime = startTime;
+                nextSubNoteTime = startTime;
+                
+                // Set initial timer if selected
+                const selectedTime = parseInt(timerSelect.value);
+                if (selectedTime > 0) {
+                    remainingSeconds = selectedTime;
+                    timerDisplay.innerText = formatTime(remainingSeconds);
+                    timerDisplay.classList.replace('text-slate-400', 'text-sky-400');
+                    countdownID = setInterval(() => {
+                        remainingSeconds--;
+                        timerDisplay.innerText = formatTime(remainingSeconds);
+                        if (remainingSeconds <= 0) {
+                            toggleMetronome();
+                        }
+                    }, 1000);
+                }
+
+                scheduler();
+                startStopBtn.innerText = 'STOP';
+                startStopBtn.classList.replace('bg-sky-500', 'bg-rose-500');
+                isRunning = true;
+            } else {
+                clearTimeout(timerID);
+                clearInterval(countdownID);
+                startStopBtn.innerText = 'START';
+                startStopBtn.classList.replace('bg-rose-500', 'bg-sky-500');
+                timerDisplay.innerText = "Timer: OFF";
+                timerDisplay.classList.replace('text-sky-400', 'text-slate-400');
+                const dots = document.querySelectorAll('#visualizerMain div, #visualizerSub div');
+                dots.forEach(d => d.classList.remove('active-dot-main', 'active-dot-sub'));
+                isRunning = false;
+            }
+        }
+
+        bpmSlider.addEventListener('input', (e) => {
+            tempo = e.target.value;
+            bpmDisplay.innerText = tempo;
+        });
+
+        startStopBtn.addEventListener('click', toggleMetronome);
+
+        document.getElementById('plusBeats').addEventListener('click', () => {
+            if (beatsPerMeasure < 16) { beatsPerMeasure++; beatsDisplay.innerText = beatsPerMeasure; updateVisualizers(); }
+        });
+        document.getElementById('minusBeats').addEventListener('click', () => {
+            if (beatsPerMeasure > 1) { beatsPerMeasure--; beatsDisplay.innerText = beatsPerMeasure; updateVisualizers(); }
+        });
+
+        const clearActiveClasses = () => {
+            subBtns.forEach(b => b.classList.remove('bg-sky-600', 'ring-1', 'ring-white'));
+            specBtns.forEach(b => b.classList.remove('bg-indigo-600', 'ring-1', 'ring-white'));
+        };
+
+        subBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                subdivision = parseInt(btn.getAttribute('data-val'));
+                currentSpecial = null;
+                clearActiveClasses();
+                btn.classList.add('bg-sky-600', 'ring-1', 'ring-white');
+                updateVisualizers();
+            });
+        });
+
+        specBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentSpecial = btn.getAttribute('data-type');
+                subdivision = 1;
+                clearActiveClasses();
+                btn.classList.add('bg-indigo-600', 'ring-1', 'ring-white');
+                updateVisualizers();
+            });
+        });
+
+        updateVisualizers();
+        subBtns[0].classList.add('bg-sky-600', 'ring-1', 'ring-white');
+    </script>
+</body>
+</html>
