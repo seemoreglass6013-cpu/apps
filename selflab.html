@@ -3,37 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>self lab.</title>
-    <!-- React & Tailwind & Lucide Icons -->
+    <title>self lab. - Evolution</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/font/lucide.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-        body { font-family: 'Inter', "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+JP:wght@300;400&display=swap');
+        body { 
+            font-family: 'Inter', 'Noto Sans JP', sans-serif; 
+            background-color: #f8fafc;
+        }
+        .chat-bubble {
+            animation: slideIn 0.4s ease-out;
+            max-width: 85%;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
     </style>
 </head>
-<body class="bg-slate-50">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
         const App = () => {
             const [messages, setMessages] = useState([]);
             const [step, setStep] = useState('init');
-            const [data, setData] = useState({ category: '', detail: '', intensity: '', memo: '', date: '' });
+            const [data, setData] = useState({ 
+                category: '', 
+                detail: '', 
+                intensity: '', 
+                vital: '',
+                diet: '',
+                chess: '',
+                memo: '', 
+                date: '' 
+            });
             const [isFinished, setIsFinished] = useState(false);
             const [inputValue, setInputValue] = useState('');
             const scrollRef = useRef(null);
 
+            // App Start
             useEffect(() => {
                 const initTimer = setTimeout(() => {
-                    addBotMessage("こんにちは。self lab.へようこそ。");
+                    addBotMessage("Hola. self lab.へようこそ。");
                     setTimeout(() => {
-                        addBotMessage("今日はどうしました？ 何か、私に聞かせてほしいことがあれば。");
+                        addBotMessage("How are you feeling today? 体の調子や、チェスの集中力はどうですか？");
                         setStep('category');
                     }, 1000);
                 }, 500);
@@ -50,30 +74,41 @@
             const handleChoice = (choice) => {
                 addUserMessage(choice.label);
                 const newData = { ...data };
+
                 if (step === 'category') {
                     newData.category = choice.label;
                     newData.date = new Date().toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                     setData(newData);
+                    
                     setTimeout(() => {
-                        if (choice.id === 'migraine') { setStep('migraine_detail'); addBotMessage("頭痛ですね。ズキズキ波打つ感じ？ それとも締め付けられる？"); }
-                        else if (choice.id === 'gout') { setStep('gout_detail'); addBotMessage("足の痛み…心配ですね。どのあたりが痛みますか？ 腫れや熱は？"); }
-                        else if (choice.id === 'cold') { setStep('cold_detail'); addBotMessage("風邪の予感ですね。喉の違和感や、ゾクゾクする感じはありますか？"); }
-                        else { setStep('intensity'); askIntensity(); }
+                        if (choice.id === 'gout') {
+                            setStep('diet');
+                            addBotMessage("¿Comiste algo rico? 昨日、プリン体の多い食事（ビールや魚卵など）は摂りましたか？");
+                        } else if (choice.id === 'chess') {
+                            setStep('chess_detail');
+                            addBotMessage("思考の明瞭さはどうでしょう？ ELO向上へのヒントになるかもしれません。");
+                        } else {
+                            setStep('vital');
+                            addBotMessage("バイタル（熱や血圧など）に変化はありますか？ なければ『特になし』で大丈夫。");
+                        }
                     }, 800);
-                } else if (step.includes('_detail')) {
-                    newData.detail = choice.label;
+                } else if (step === 'diet' || step === 'chess_detail') {
+                    newData[step === 'diet' ? 'diet' : 'chess'] = choice.label;
+                    setData(newData);
+                    setStep('vital');
+                    setTimeout(() => addBotMessage("Entendido. バイタル（数値）はどうですか？"), 800);
+                } else if (step === 'vital') {
+                    newData.vital = choice.label;
                     setData(newData);
                     setStep('intensity');
-                    setTimeout(askIntensity, 800);
+                    setTimeout(() => addBotMessage("今の状態を1（最高）から10（最悪）で表すと？"), 800);
                 } else if (step === 'intensity') {
                     newData.intensity = choice.label;
                     setData(newData);
                     setStep('memo');
-                    setTimeout(() => addBotMessage("最後に、何か思い当たること（食事や今の気持ちなど）を教えて。"), 800);
+                    setTimeout(() => addBotMessage("最後に、今の気持ちを自由に綴ってください。"), 800);
                 }
             };
-
-            const askIntensity = () => addBotMessage("その違和感、1から10までだと、今はいくつくらい？");
 
             const handleFreeInput = () => {
                 if (!inputValue.trim()) return;
@@ -81,82 +116,125 @@
                 setData(prev => ({ ...prev, memo: inputValue }));
                 setInputValue('');
                 setTimeout(() => {
-                    addBotMessage("すべて受け止めました。無理をしないで、今日はゆっくり休んでくださいね。");
+                    addBotMessage("Muchas gracias. すべて記録しました。静かな時間を過ごしてくださいね。");
                     setIsFinished(true);
                 }, 800);
             };
 
+            const generateReport = () => {
+                return `【self lab. Evolution Log】
+日時: ${data.date}
+カテゴリ: ${data.category}
+食事/チェス: ${data.diet || data.chess || '-'}
+バイタル: ${data.vital || '-'}
+強度: Lv.${data.intensity || '-'}
+備考: ${data.memo || 'なし'}
+--------------------
+¡Buen viaje!`;
+            };
+
             const copyToClipboard = () => {
-                const report = `【self lab. 体調ログ】\n日時：${data.date}\n症状：${data.category}\n詳細：${data.detail || '-'}\n強度：Lv.${data.intensity || '-'}\n備考：${data.memo || 'なし'}`;
-                navigator.clipboard.writeText(report);
-                alert('コピーしました！iPhoneのメモに貼り付けてください。');
+                navigator.clipboard.writeText(generateReport());
+                alert('¡Copiado! クリップボードにコピーしました。');
             };
 
             const choices = {
                 category: [
-                    { id: 'migraine', label: '偏頭痛 (Migraine / Migraña)' },
-                    { id: 'gout', label: '足の痛み (Foot pain / Dolor de pie)' },
-                    { id: 'cold', label: '風邪の予感 (Cold signs / Resfriado)' },
-                    { id: 'other', label: 'その他 (Other / Otro)' },
+                    { id: 'migraine', label: '偏頭痛 (Migraine)' },
+                    { id: 'gout', label: '足の痛み (Pain / Dolor)' },
+                    { id: 'chess', label: 'チェス・コンディション' },
+                    { id: 'other', label: 'その他 (Other)' },
                 ],
-                migraine_detail: [{ label: 'ズキズキ拍動する' }, { label: '締め付けられる' }, { label: '光や音がツライ' }],
-                gout_detail: [{ label: '親指の付け根が痛い' }, { label: '熱をもって腫れている' }, { label: 'ピリピリと違和感' }],
-                cold_detail: [{ label: '喉がイガイガする' }, { label: 'ゾクゾク寒気がする' }, { label: '関節が重だるい' }],
-                intensity: [{ label: '1〜3（軽度 / Mild）' }, { label: '4〜6（中度 / Moderate）' }, { label: '7〜10（重度 / Severe）' }]
+                diet: [
+                    { label: 'プリン体多め (Alto en purinas)' },
+                    { label: '普段通り (Normal)' },
+                    { label: '控えている (Bajo en purinas)' }
+                ],
+                chess_detail: [
+                    { label: 'クリア (Clear / Claro)' },
+                    { label: '少し霧がかっている (Foggy)' },
+                    { label: '集中できない (Distracted)' }
+                ],
+                vital: [
+                    { label: '平熱 (Normal temp)' },
+                    { label: '微熱あり (Fever)' },
+                    { label: '血圧が高め (High pressure)' },
+                    { label: '特になし (Nada)' }
+                ],
+                intensity: [
+                    { label: '1-3 (Bien)' },
+                    { label: '4-6 (Regular)' },
+                    { label: '7-10 (Mal)' }
+                ]
             };
 
             return (
-                <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-xl border-x overflow-hidden">
-                    <header className="bg-white border-b p-5 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-                                <i className="lucide-heart-pulse text-blue-400 text-xl"></i>
+                <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl border-x overflow-hidden relative">
+                    <header className="glass-header border-b p-5 flex items-center justify-between sticky top-0 z-20">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500/10 to-indigo-500/10 flex items-center justify-center border border-blue-100 shadow-sm animate-pulse">
+                                <i className="lucide-sparkles text-blue-400 text-xl"></i>
                             </div>
                             <div>
-                                <h1 className="text-lg font-light tracking-[0.2em]">self lab<span className="text-blue-400">.</span></h1>
-                                <p className="text-[9px] text-slate-400 font-medium tracking-widest">PERSONAL OBSERVATION</p>
+                                <h1 className="text-xl font-light tracking-[0.25em] text-slate-800">self lab<span className="text-blue-400">.</span></h1>
+                                <p className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Analytical Observer</p>
                             </div>
                         </div>
-                        <button onClick={() => location.reload()} className="text-slate-300"><i className="lucide-refresh-cw w-5 h-5"></i></button>
+                        <button onClick={() => location.reload()} className="text-slate-300 hover:text-blue-400 transition-colors">
+                            <i className="lucide-refresh-cw w-5 h-5"></i>
+                        </button>
                     </header>
 
-                    <main ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white to-slate-50">
+                    <main ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#fcfdfe]">
                         {messages.map((m) => (
                             <div key={m.id} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] p-4 rounded-3xl text-[13px] leading-relaxed shadow-sm ${m.type === 'user' ? 'bg-blue-500 text-white rounded-tr-none' : 'bg-white border text-slate-600 rounded-tl-none font-light italic'}`}>
+                                <div className={`chat-bubble p-4 rounded-3xl text-[13px] leading-relaxed shadow-sm ${
+                                    m.type === 'user' 
+                                    ? 'bg-blue-600 text-white rounded-tr-none' 
+                                    : 'bg-white border border-slate-100 text-slate-600 rounded-tl-none font-light italic'
+                                }`}>
                                     {m.text}
                                 </div>
                             </div>
                         ))}
                         {isFinished && (
-                            <div className="mt-8 p-6 bg-white border border-blue-100 rounded-[2rem] shadow-sm">
-                                <h3 className="text-[10px] font-bold text-blue-400 tracking-widest mb-4 uppercase">Observation Report</h3>
-                                <pre className="text-[11px] text-slate-500 bg-slate-50 p-4 rounded-2xl whitespace-pre-wrap leading-relaxed">{`【self lab. 体調ログ】\n日時：${data.date}\n症状：${data.category}\n詳細：${data.detail || '-'}\n強度：Lv.${data.intensity || '-'}\n備考：${data.memo || '-'}`}</pre>
-                                <button onClick={copyToClipboard} className="mt-5 w-full bg-slate-900 text-white py-4 rounded-2xl text-xs font-bold tracking-widest flex items-center justify-center gap-2 shadow-lg hover:bg-slate-800 active:scale-95 transition-all">
-                                    <i className="lucide-clipboard w-4 h-4"></i> iPhoneのメモにコピー
+                            <div className="mt-8 p-6 bg-white border border-blue-50 rounded-[2.5rem] shadow-lg border-t-4 border-t-blue-400">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <i className="lucide-activity text-blue-400 w-4 h-4"></i>
+                                    <h3 className="text-[10px] font-bold text-blue-400 tracking-[0.3em] uppercase">Daily Analysis</h3>
+                                </div>
+                                <pre className="text-[11px] text-slate-500 bg-slate-50 p-5 rounded-2xl whitespace-pre-wrap leading-relaxed border border-slate-100 font-mono">
+                                    {generateReport()}
+                                </pre>
+                                <button onClick={copyToClipboard} className="mt-6 w-full bg-slate-900 text-white py-4 rounded-2xl text-xs font-bold tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl hover:bg-blue-600 transition-all">
+                                    <i className="lucide-share-2 w-4 h-4"></i> IPHONEのメモに送る
                                 </button>
                             </div>
                         )}
                     </main>
 
-                    <footer className="p-6 bg-white border-t">
+                    <footer className="p-6 bg-white border-t border-slate-50">
                         {!isFinished ? (
                             <div className="flex flex-wrap gap-2">
                                 {step === 'memo' ? (
-                                    <div className="w-full flex gap-3 items-center bg-slate-50 rounded-2xl px-5 py-1 border border-slate-100">
-                                        <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="何か一言..." className="flex-1 bg-transparent py-2 text-sm outline-none" onKeyDown={(e) => e.key === 'Enter' && handleFreeInput()} />
-                                        <button onClick={handleFreeInput} className="text-blue-400"><i className="lucide-send w-5 h-5"></i></button>
+                                    <div className="w-full flex gap-3 items-center bg-slate-50 rounded-2xl px-5 py-1 border border-slate-200">
+                                        <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Escribe aquí... (一言どうぞ)" className="flex-1 bg-transparent py-3 text-sm outline-none" onKeyDown={(e) => e.key === 'Enter' && handleFreeInput()} />
+                                        <button onClick={handleFreeInput} className="text-blue-500"><i className="lucide-send w-6 h-6"></i></button>
                                     </div>
                                 ) : (
-                                    choices[step]?.map((c) => (
-                                        <button key={c.label} onClick={() => handleChoice(c)} className="bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-500 px-5 py-3 rounded-full text-[12px] font-medium text-slate-500 transition-all active:bg-blue-50 flex items-center gap-2">
-                                            {c.label} <i className="lucide-chevron-right w-3 h-3 text-slate-300"></i>
-                                        </button>
-                                    ))
+                                    <div className="flex flex-wrap gap-2">
+                                        {choices[step]?.map((c) => (
+                                            <button key={c.label} onClick={() => handleChoice(c)} className="bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-600 px-5 py-3 rounded-full text-[12px] font-medium text-slate-500 transition-all active:scale-95 flex items-center gap-2 shadow-sm">
+                                                {c.label} <i className="lucide-chevron-right w-3 h-3 text-slate-300"></i>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="text-center py-2"><p className="text-[10px] text-slate-300 tracking-[0.2em] italic font-light">Have a peaceful time.</p></div>
+                            <div className="text-center py-2">
+                                <p className="text-[10px] text-slate-300 tracking-[0.3em] italic font-light">See you in the lab.</p>
+                            </div>
                         )}
                     </footer>
                 </div>
