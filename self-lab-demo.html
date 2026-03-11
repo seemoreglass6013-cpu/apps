@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>self lab. Canvas Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.344.0/font/lucide.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        canvas { touch-action: none; } /* スマホでのスクロール防止 */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex items-center justify-center min-h-screen p-4">
+
+<div class="w-full max-w-md bg-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-700 flex flex-col h-[85vh]">
+    <header class="p-6 text-center border-b border-slate-700 bg-slate-800/50 backdrop-blur-md">
+        <h1 class="text-xl font-light tracking-[0.2em] text-white">self lab<span class="text-blue-400">.</span></h1>
+        <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Tap where it hurts</p>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center p-4 relative">
+        <div class="relative bg-slate-900 rounded-[2rem] p-4 border border-slate-700 shadow-inner">
+            <canvas id="bodyCanvas" width="280" height="400" class="cursor-crosshair"></canvas>
+            <div id="status-label" class="absolute top-4 left-4 text-[10px] font-bold text-blue-400 uppercase tracking-tighter opacity-50">Body Mapper v1.0</div>
+        </div>
+        
+        <div id="instruction" class="mt-6 text-sm text-slate-400 font-light italic">
+            痛みや違和感のある場所をタップしてください
+        </div>
+    </main>
+
+    <footer class="p-8 bg-slate-800 border-t border-slate-700">
+        <div id="action-area" class="hidden fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-xs text-slate-400">部位を特定しました</span>
+                <button onclick="resetCanvas()" class="text-xs text-blue-400 hover:underline">やり直す</button>
+            </div>
+            <button onclick="submitLog()" class="w-full bg-blue-500 hover:bg-blue-400 text-white py-4 rounded-2xl font-semibold shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                この場所を記録する
+            </button>
+        </div>
+    </footer>
+</div>
+
+<script>
+    const canvas = document.getElementById('bodyCanvas');
+    const ctx = canvas.getContext('2d');
+    const actionArea = document.getElementById('action-area');
+    const instruction = document.getElementById('instruction');
+    let selectedPoint = null;
+
+    function drawBody() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // シルエットの描画（ネオン風）
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        // 頭
+        ctx.arc(140, 60, 25, 0, Math.PI * 2);
+        // 体
+        ctx.moveTo(140, 85); ctx.lineTo(140, 220); // 背骨
+        ctx.moveTo(100, 110); ctx.lineTo(180, 110); // 肩
+        ctx.moveTo(100, 110); ctx.lineTo(80, 200);  // 左腕
+        ctx.moveTo(180, 110); ctx.lineTo(200, 200); // 右腕
+        ctx.moveTo(140, 220); ctx.lineTo(110, 350); // 左足
+        ctx.moveTo(140, 220); ctx.lineTo(170, 350); // 右足
+        ctx.stroke();
+
+        if (selectedPoint) {
+            // 選択されたポイントの描画（波紋エフェクト風）
+            ctx.fillStyle = '#60a5fa';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(selectedPoint.x, selectedPoint.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0; // リセット
+            ctx.strokeStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.arc(selectedPoint.x, selectedPoint.y, 15, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        selectedPoint = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+        drawBody();
+        actionArea.classList.remove('hidden');
+        instruction.classList.add('opacity-0');
+    });
+
+    function resetCanvas() {
+        selectedPoint = null;
+        drawBody();
+        actionArea.classList.add('hidden');
+        instruction.classList.remove('opacity-0');
+    }
+
+    function submitLog() {
+        alert(`位置記録完了: X=${Math.round(selectedPoint.x)}, Y=${Math.round(selectedPoint.y)}\niPhoneのメモ等に座標を保存する処理をここに繋げられます。`);
+        // ここで前回のコードの「Medical Report」作成処理に飛ばすことができます
+    }
+
+    window.onload = drawBody;
+</script>
+
+</body>
+</html>
