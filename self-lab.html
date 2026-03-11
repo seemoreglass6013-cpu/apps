@@ -1,0 +1,231 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageCircle, Clipboard, Share, RefreshCw, User, Thermometer, Activity, Footprints, HeartPulse, Send } from 'lucide-react';
+
+const SelfLabApp = () => {
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      type: 'bot',
+      text: 'こんにちは。self lab.へようこそ。',
+    },
+    {
+      id: 2,
+      type: 'bot',
+      text: '今日は、体のどこが、どんなふうに気になりますか？',
+    }
+  ]);
+  const [step, setStep] = useState('category');
+  const [data, setData] = useState({});
+  const [isFinished, setIsFinished] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const addMessage = (text, type = 'bot') => {
+    setMessages(prev => [...prev, { id: Date.now(), type, text }]);
+  };
+
+  const handleChoice = (choice) => {
+    addMessage(choice.label, 'user');
+    setTimeout(() => {
+      processNextStep(choice);
+    }, 600);
+  };
+
+  const processNextStep = (choice) => {
+    switch (step) {
+      case 'category':
+        setData({ ...data, category: choice.label, date: new Date().toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) });
+        if (choice.id === 'migraine') {
+          setStep('migraine_detail');
+          addMessage('頭痛ですね。ズキズキ波打つ感じ？ それとも、ぎゅーっと締め付けられる感じですか？');
+        } else if (choice.id === 'gout') {
+          setStep('gout_detail');
+          addMessage('足の痛み…歩く時に響きますか？ それとも熱を持っているような感じでしょうか？');
+        } else if (choice.id === 'cold') {
+          setStep('cold_detail');
+          addMessage('風邪のひき始めかもしれませんね。喉のイガイガや、ゾクゾクする寒気はありますか？');
+        } else {
+          setStep('intensity');
+          addMessage('なるほど。その違和感、1から10の数字で表すと、今はいくつくらいでしょう？');
+        }
+        break;
+
+      case 'migraine_detail':
+      case 'gout_detail':
+      case 'cold_detail':
+        setData({ ...data, detail: choice.label });
+        setStep('intensity');
+        addMessage('教えてくれてありがとう。その痛み、1（かすかな違和感）から10（耐えられない）までだと、どのくらいですか？');
+        break;
+
+      case 'intensity':
+        setData({ ...data, intensity: choice.label });
+        setStep('memo');
+        addMessage('最後に、何か思い当たること（食事や気圧の変化、今の気持ちなど）があれば教えてください。');
+        break;
+
+      default:
+        finishRecording();
+    }
+  };
+
+  const handleFreeInput = () => {
+    if (!inputValue.trim()) return;
+    const text = inputValue;
+    setInputValue('');
+    addMessage(text, 'user');
+    setData(prev => ({ ...prev, memo: text }));
+    setTimeout(() => {
+      finishRecording();
+    }, 600);
+  };
+
+  const finishRecording = () => {
+    addMessage('すべて受け止めました。無理をしないで、今日はゆっくり休んでくださいね。');
+    setIsFinished(true);
+  };
+
+  const generateReport = () => {
+    return `【self lab. 体調ログ】
+日時：${data.date}
+症状：${data.category}
+詳細：${data.detail || '-'}
+強度：Lv.${data.intensity || '-'}
+備考：${data.memo || '特になし'}`;
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generateReport());
+    alert('iPhoneのメモに貼り付けられるよう、クリップボードにコピーしました。');
+  };
+
+  const choices = {
+    category: [
+      { id: 'migraine', label: '偏頭痛' },
+      { id: 'gout', label: '足の痛み' },
+      { id: 'cold', label: '風邪の予感' },
+      { id: 'other', label: 'その他' },
+    ],
+    migraine_detail: [
+      { label: 'ズキズキ拍動する' },
+      { label: '締め付けられる' },
+      { label: '光や音がツライ' },
+    ],
+    gout_detail: [
+      { label: '親指の付け根が痛い' },
+      { label: '熱をもって腫れている' },
+      { label: 'ピリピリと違和感' },
+    ],
+    cold_detail: [
+      { label: '喉がイガイガする' },
+      { label: 'ゾクゾク寒気がする' },
+      { label: '関節が重だるい' },
+    ],
+    intensity: [
+      { label: '1〜3（軽度）' },
+      { label: '4〜6（中度）' },
+      { label: '7〜10（重度）' },
+    ]
+  };
+
+  return (
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-[#F8FAFC] font-sans text-slate-700 shadow-2xl overflow-hidden border-x">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md border-b p-5 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-300 flex items-center justify-center shadow-inner">
+            <HeartPulse className="text-white" size={20} />
+          </div>
+          <div>
+            <h1 className="text-lg font-light tracking-widest text-slate-800">self lab<span className="text-blue-500">.</span></h1>
+            <p className="text-[10px] text-slate-400 font-medium tracking-tighter">PERSONAL HEALTH LOG</p>
+          </div>
+        </div>
+        <button onClick={() => window.location.reload()} className="p-2 hover:rotate-180 transition-transform duration-500">
+          <RefreshCw size={18} className="text-slate-300" />
+        </button>
+      </header>
+
+      {/* Chat Area */}
+      <main ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+        {messages.map((m) => (
+          <div key={m.id} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] p-4 rounded-3xl text-sm leading-relaxed ${
+              m.type === 'user' 
+                ? 'bg-blue-500 text-white rounded-tr-none shadow-md' 
+                : 'bg-white border border-slate-100 text-slate-600 rounded-tl-none shadow-sm font-light italic'
+            }`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+
+        {isFinished && (
+          <div className="mt-8 p-5 bg-blue-50/50 border border-blue-100 rounded-3xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex items-center gap-2 mb-3">
+              <Clipboard size={14} className="text-blue-500" />
+              <h3 className="text-xs font-bold text-blue-500 tracking-widest uppercase">Medical Report</h3>
+            </div>
+            <pre className="text-xs text-slate-500 bg-white/50 p-4 rounded-2xl whitespace-pre-wrap leading-loose border border-white">
+              {generateReport()}
+            </pre>
+            <button 
+              onClick={copyToClipboard}
+              className="mt-4 w-full bg-slate-800 text-white py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-700 transition-all shadow-lg active:scale-95"
+            >
+              iPhoneのメモにコピーする
+            </button>
+          </div>
+        )}
+      </main>
+
+      {/* Input Area */}
+      <footer className="p-6 bg-white border-t rounded-t-[2rem] shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+        {!isFinished ? (
+          <div className="flex flex-wrap gap-2">
+            {step === 'memo' ? (
+              <div className="w-full flex gap-2 items-center bg-slate-100 rounded-full px-4 py-1">
+                <input 
+                  type="text" 
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="何か一言あれば..." 
+                  className="flex-1 bg-transparent py-2 text-sm outline-none"
+                  onKeyDown={(e) => e.key === 'Enter' && handleFreeInput()}
+                />
+                <button 
+                  onClick={handleFreeInput}
+                  className="text-blue-500 p-1"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+            ) : (
+              choices[step]?.map((c) => (
+                <button
+                  key={c.id || c.label}
+                  onClick={() => handleChoice(c)}
+                  className="bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-500 px-5 py-2.5 rounded-full text-[13px] font-medium text-slate-500 transition-all active:bg-blue-50"
+                >
+                  {c.label}
+                </button>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-2">
+            <p className="text-xs text-slate-300 tracking-widest font-light italic">Take care of yourself.</p>
+          </div>
+        )}
+      </footer>
+    </div>
+  );
+};
+
+export default SelfLabApp;
