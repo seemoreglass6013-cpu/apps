@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WPM Tracker (Auto-Save Edition)</title>
+    <title>WPM Tracker (Pro Auto-Save Edition)</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -13,14 +13,14 @@
             background-color: #f4f7f6;
             color: #333;
         }
-        h1 { text-align: center; color: #2c3e50; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
         .container {
             background: white;
             padding: 30px;
             border-radius: 12px;
-            shadow: 0 4px 6px rgba(0,0,0,0.1);
             box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         }
+        .info-header { font-size: 14px; color: #7f8c8d; text-align: right; margin-bottom: 5px; }
         textarea {
             width: 100%;
             height: 200px;
@@ -32,10 +32,17 @@
             margin-bottom: 20px;
             transition: border-color 0.3s;
         }
-        textarea:focus {
-            border-color: #3498db;
-            outline: none;
+        textarea:focus { border-color: #3498db; outline: none; }
+        
+        .timer-display {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #e67e22;
+            margin-bottom: 10px;
+            height: 30px;
         }
+
         .controls {
             display: flex;
             gap: 10px;
@@ -59,36 +66,50 @@
         
         .result-panel {
             text-align: center;
-            padding: 20px;
+            padding: 25px;
             background: #ecf0f1;
             border-radius: 8px;
         }
         .wpm-score {
-            font-size: 48px;
+            font-size: 56px;
             font-weight: bold;
             color: #2980b9;
+            margin: 10px 0;
         }
-        .info { font-size: 14px; color: #7f8c8d; margin-top: 5px; }
+        .level-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            background: #34495e;
+            color: white;
+            font-size: 18px;
+            margin-top: 5px;
+        }
+        .stats-detail { font-size: 15px; color: #7f8c8d; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>WPM Tracker</h1>
+    <div class="info-header">※文章は自動保存されています</div>
     
-    <p class="info">※入力した文章はブラウザに自動保存されます。</p>
     <textarea id="inputText" placeholder="ここに英文を貼り付けてください..."></textarea>
     
+    <div id="timerDisplay" class="timer-display">Ready</div>
+    
     <div class="controls">
-        <button id="startBtn" class="btn-start">開始 (Start)</button>
-        <button id="stopBtn" class="btn-stop" disabled>終了 (Stop)</button>
+        <button id="startBtn" class="btn-start">計測開始 (Start)</button>
+        <button id="stopBtn" class="btn-stop" disabled>読了 (Stop)</button>
         <button id="resetBtn" class="btn-reset">リセット</button>
     </div>
 
     <div class="result-panel">
-        <div>あなたのWPM:</div>
+        <div>Reading Speed:</div>
         <div id="wpmDisplay" class="wpm-score">0</div>
-        <div id="stats" class="info">経過時間: 0秒 | 単語数: 0</div>
+        <div id="levelDisplay" class="level-badge">LEVEL: -</div>
+        <div id="stats" class="stats-detail">単語数: 0 | タイム: 0.0秒</div>
     </div>
 </div>
 
@@ -100,9 +121,11 @@
     const stopBtn = document.getElementById('stopBtn');
     const resetBtn = document.getElementById('resetBtn');
     const wpmDisplay = document.getElementById('wpmDisplay');
+    const levelDisplay = document.getElementById('levelDisplay');
+    const timerDisplay = document.getElementById('timerDisplay');
     const stats = document.getElementById('stats');
 
-    // --- 【新機能】保存されたテキストの読み込み ---
+    // 読み込み時に自動復元
     window.onload = () => {
         const savedData = localStorage.getItem('wpm_app_text');
         if (savedData) {
@@ -110,10 +133,18 @@
         }
     };
 
-    // --- 【新機能】入力されるたびに自動保存 ---
+    // 入力時に自動保存
     inputText.addEventListener('input', () => {
         localStorage.setItem('wpm_app_text', inputText.value);
     });
+
+    function getLevel(wpm) {
+        if (wpm < 80) return "Beginner (ゆっくり丁寧！)";
+        if (wpm < 120) return "Intermediate (平均的ペース！)";
+        if (wpm < 180) return "Fluent (スムーズな読解力！)";
+        if (wpm < 250) return "Professional (ネイティブ並み！)";
+        return "Speed Demon (超人級の速さ！)";
+    }
 
     startBtn.addEventListener('click', () => {
         if (!inputText.value.trim()) {
@@ -125,23 +156,26 @@
         stopBtn.disabled = false;
         inputText.readOnly = true;
         
-        // 簡易タイマー表示（秒のみ）
+        // リアルタイムタイマー
         timerInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            stats.innerText = `計測中... (${elapsed}秒経過)`;
-        }, 1000);
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            timerDisplay.innerText = `${elapsed} s`;
+        }, 100);
     });
 
     stopBtn.addEventListener('click', () => {
         clearInterval(timerInterval);
         const endTime = Date.now();
-        const durationInMinutes = (endTime - startTime) / 1000 / 60;
+        const durationInSeconds = (endTime - startTime) / 1000;
+        const durationInMinutes = durationInSeconds / 60;
         
         const words = inputText.value.trim().split(/\s+/).length;
         const wpm = Math.round(words / durationInMinutes);
         
         wpmDisplay.innerText = wpm;
-        stats.innerText = `経過時間: ${Math.round(durationInMinutes * 60)}秒 | 単語数: ${words}`;
+        levelDisplay.innerText = `LEVEL: ${getLevel(wpm)}`;
+        stats.innerText = `単語数: ${words} | タイム: ${durationInSeconds.toFixed(1)}秒`;
+        timerDisplay.innerText = "Complete!";
         
         startBtn.disabled = false;
         stopBtn.disabled = true;
@@ -152,9 +186,11 @@
         if (confirm("入力した文章と結果をリセットしますか？")) {
             clearInterval(timerInterval);
             inputText.value = "";
-            localStorage.removeItem('wpm_app_text'); // 保存データも消去
+            localStorage.removeItem('wpm_app_text');
             wpmDisplay.innerText = "0";
-            stats.innerText = "経過時間: 0秒 | 単語数: 0";
+            levelDisplay.innerText = "LEVEL: -";
+            stats.innerText = "単語数: 0 | タイム: 0.0秒";
+            timerDisplay.innerText = "Ready";
             startBtn.disabled = false;
             stopBtn.disabled = true;
             inputText.readOnly = false;
