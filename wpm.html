@@ -3,168 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WPM Reading Timer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>WPM Tracker (Auto-Save Edition)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        h1 { text-align: center; color: #2c3e50; }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        textarea:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-start { background-color: #27ae60; color: white; }
+        .btn-stop { background-color: #e74c3c; color: white; }
+        .btn-reset { background-color: #95a5a6; color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        .result-panel {
+            text-align: center;
+            padding: 20px;
+            background: #ecf0f1;
+            border-radius: 8px;
+        }
+        .wpm-score {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2980b9;
+        }
+        .info { font-size: 14px; color: #7f8c8d; margin-top: 5px; }
+    </style>
 </head>
-<body class="bg-slate-50">
-    <div id="root"></div>
+<body>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+<div class="container">
+    <h1>WPM Tracker</h1>
+    
+    <p class="info">※入力した文章はブラウザに自動保存されます。</p>
+    <textarea id="inputText" placeholder="ここに英文を貼り付けてください..."></textarea>
+    
+    <div class="controls">
+        <button id="startBtn" class="btn-start">開始 (Start)</button>
+        <button id="stopBtn" class="btn-stop" disabled>終了 (Stop)</button>
+        <button id="resetBtn" class="btn-reset">リセット</button>
+    </div>
 
-        // Lucideアイコンの簡易コンポーネント
-        const Icon = ({ name, size = 20, ...props }) => {
-            const [svg, setSvg] = useState('');
-            useEffect(() => {
-                const icon = lucide.icons[name];
-                if (icon) {
-                    setSvg(lucide.createIcons({ icons: { [name]: icon } }));
-                }
-            }, [name]);
-            return <i data-lucide={name} style={{width: size, height: size}} {...props}></i>;
-        };
+    <div class="result-panel">
+        <div>あなたのWPM:</div>
+        <div id="wpmDisplay" class="wpm-score">0</div>
+        <div id="stats" class="info">経過時間: 0秒 | 単語数: 0</div>
+    </div>
+</div>
 
-        const App = () => {
-            const [text, setText] = useState('');
-            const [wordCount, setWordCount] = useState(0);
-            const [isRunning, setIsRunning] = useState(false);
-            const [time, setTime] = useState(0);
-            const [wpm, setWpm] = useState(null);
-            const timerRef = useRef(null);
+<script>
+    let startTime;
+    let timerInterval;
+    const inputText = document.getElementById('inputText');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const wpmDisplay = document.getElementById('wpmDisplay');
+    const stats = document.getElementById('stats');
 
-            useEffect(() => {
-                const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-                setWordCount(words);
-            }, [text]);
+    // --- 【新機能】保存されたテキストの読み込み ---
+    window.onload = () => {
+        const savedData = localStorage.getItem('wpm_app_text');
+        if (savedData) {
+            inputText.value = savedData;
+        }
+    };
 
-            useEffect(() => {
-                if (isRunning) {
-                    timerRef.current = setInterval(() => {
-                        setTime((prevTime) => prevTime + 1);
-                    }, 1000);
-                } else {
-                    clearInterval(timerRef.current);
-                }
-                return () => clearInterval(timerRef.current);
-            }, [isRunning]);
+    // --- 【新機能】入力されるたびに自動保存 ---
+    inputText.addEventListener('input', () => {
+        localStorage.setItem('wpm_app_text', inputText.value);
+    });
 
-            useEffect(() => {
-                // アイコンの再レンダリング用
-                lucide.createIcons();
-            });
+    startBtn.addEventListener('click', () => {
+        if (!inputText.value.trim()) {
+            alert("文章を入力してください");
+            return;
+        }
+        startTime = Date.now();
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        inputText.readOnly = true;
+        
+        // 簡易タイマー表示（秒のみ）
+        timerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            stats.innerText = `計測中... (${elapsed}秒経過)`;
+        }, 1000);
+    });
 
-            const handleStart = () => {
-                if (wordCount === 0) return;
-                setIsRunning(true);
-                setTime(0);
-                setWpm(null);
-            };
+    stopBtn.addEventListener('click', () => {
+        clearInterval(timerInterval);
+        const endTime = Date.now();
+        const durationInMinutes = (endTime - startTime) / 1000 / 60;
+        
+        const words = inputText.value.trim().split(/\s+/).length;
+        const wpm = Math.round(words / durationInMinutes);
+        
+        wpmDisplay.innerText = wpm;
+        stats.innerText = `経過時間: ${Math.round(durationInMinutes * 60)}秒 | 単語数: ${words}`;
+        
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        inputText.readOnly = false;
+    });
 
-            const handleStop = () => {
-                setIsRunning(false);
-                if (time > 0 && wordCount > 0) {
-                    const minutes = time / 60;
-                    const calculatedWpm = Math.round(wordCount / minutes);
-                    setWpm(calculatedWpm);
-                }
-            };
+    resetBtn.addEventListener('click', () => {
+        if (confirm("入力した文章と結果をリセットしますか？")) {
+            clearInterval(timerInterval);
+            inputText.value = "";
+            localStorage.removeItem('wpm_app_text'); // 保存データも消去
+            wpmDisplay.innerText = "0";
+            stats.innerText = "経過時間: 0秒 | 単語数: 0";
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            inputText.readOnly = false;
+        }
+    });
+</script>
 
-            const handleReset = () => {
-                setIsRunning(false);
-                setTime(0);
-                setWpm(null);
-                setText('');
-            };
-
-            const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
-            };
-
-            const getWpmFeedback = (wpmValue) => {
-                if (wpmValue < 100) return { label: 'じっくり読解中', color: 'text-blue-500' };
-                if (wpmValue < 150) return { label: '標準的なペース', color: 'text-green-500' };
-                if (wpmValue < 200) return { label: '流暢な読解', color: 'text-purple-500' };
-                return { label: 'ネイティブレベルの速さ', color: 'text-orange-500' };
-            };
-
-            return (
-                <div className="min-h-screen p-4 md:p-8 font-sans text-slate-800">
-                    <div className="max-w-2xl mx-auto space-y-6">
-                        <div className="text-center space-y-2">
-                            <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-2">
-                                <i data-lucide="book-open" className="text-indigo-600"></i>
-                                WPM タイマー
-                            </h1>
-                            <p className="text-slate-500">B1レベル目標: 120-150 WPM</p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            <textarea
-                                className="w-full h-64 p-4 text-lg border-none focus:ring-2 focus:ring-indigo-500 resize-none outline-none"
-                                placeholder="英文を貼り付けてください..."
-                                value={text}
-                                onChange={(e) => setText(e.target.value)}
-                                disabled={isRunning}
-                            />
-                            <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 flex justify-between text-sm text-slate-500">
-                                <span>単語数: <strong>{wordCount}</strong> words</span>
-                                <span>目標: 2026/10まで</span>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-4 justify-center items-center bg-white p-6 rounded-2xl shadow-md border border-slate-100">
-                            <div className="flex flex-col items-center px-6 border-r border-slate-100">
-                                <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Time</span>
-                                <span className="text-4xl font-mono font-bold text-slate-700">{formatTime(time)}</span>
-                            </div>
-
-                            <div className="flex gap-3">
-                                {!isRunning ? (
-                                    <button onClick={handleStart} disabled={wordCount === 0}
-                                        className={`flex items-center gap-2 px-8 py-3 rounded-full font-bold transition-all ${wordCount > 0 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-200 text-slate-400'}`}>
-                                        開始
-                                    </button>
-                                ) : (
-                                    <button onClick={handleStop}
-                                        className="flex items-center gap-2 px-8 py-3 bg-rose-500 text-white rounded-full font-bold shadow-lg">
-                                        停止
-                                    </button>
-                                )}
-                                <button onClick={handleReset} className="p-3 text-slate-400 hover:bg-slate-100 rounded-full">
-                                    <i data-lucide="refresh-ccw"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        {wpm !== null && (
-                            <div className="bg-indigo-900 text-white p-8 rounded-2xl shadow-xl">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-indigo-800/50 p-4 rounded-xl text-center">
-                                        <p className="text-indigo-200 text-sm">Your WPM</p>
-                                        <p className="text-5xl font-black">{wpm}</p>
-                                    </div>
-                                    <div className="bg-indigo-800/50 p-4 rounded-xl text-center">
-                                        <p className="text-indigo-200 text-sm">Rating</p>
-                                        <p className={`text-lg font-bold ${getWpmFeedback(wpm).color}`}>
-                                            {getWpmFeedback(wpm).label}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
 </body>
 </html>
