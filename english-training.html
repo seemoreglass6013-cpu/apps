@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Training - Background Support</title>
+    <title>English WPM Trainer Pro</title>
     <style>
         :root {
             --primary: #2563eb;
-            --bg: #f1f5f9;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
         }
         body {
             font-family: -apple-system, system-ui, sans-serif;
@@ -16,98 +19,152 @@
             display: flex;
             justify-content: center;
             padding: 20px;
+            color: var(--text-main);
         }
         .app-card {
-            background: white;
+            background: var(--card);
             width: 100%;
             max-width: 450px;
             padding: 2rem;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
         }
-        h1 { font-size: 1.25rem; text-align: center; color: #1e293b; margin-bottom: 1.5rem; }
+        h1 { font-size: 1.25rem; text-align: center; margin-bottom: 1.5rem; }
+        
         textarea {
             width: 100%;
-            height: 120px;
-            padding: 15px;
+            height: 160px;
+            padding: 16px;
             border: 2px solid #e2e8f0;
-            border-radius: 12px;
+            border-radius: 16px;
             font-size: 16px;
             box-sizing: border-box;
-            margin-bottom: 1rem;
-            resize: none;
+            margin-bottom: 1.5rem;
+            transition: border-color 0.2s;
+            line-height: 1.5;
+            font-family: inherit;
         }
-        .control-panel { display: flex; flex-direction: column; gap: 1rem; }
+        textarea:focus { border-color: var(--primary); outline: none; }
+
+        .control-panel { display: flex; flex-direction: column; gap: 1.25rem; }
+        
         .row { display: flex; align-items: center; justify-content: space-between; }
-        label { font-size: 0.85rem; font-weight: 600; color: #64748b; }
-        select, input[type="range"] { width: 65%; }
-        .repeat-toggle {
+        label { font-size: 0.85rem; font-weight: 700; color: var(--text-sub); }
+        
+        select { 
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-size: 14px;
+        }
+
+        .slider-box {
+            background: #f1f5f9;
+            padding: 1.25rem;
+            border-radius: 16px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+        .wpm-display { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+        .rate-display { font-size: 0.75rem; color: var(--text-sub); }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
             display: flex;
             align-items: center;
             gap: 10px;
-            font-weight: bold;
-            color: var(--primary);
+            font-weight: 600;
             cursor: pointer;
+            font-size: 0.9rem;
         }
-        .main-btn {
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            margin-top: 5px;
+        }
+
+        .play-btn {
             background: var(--primary);
             color: white;
             border: none;
             padding: 16px;
-            border-radius: 12px;
+            border-radius: 14px;
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
         .stop-btn {
-            background: #ef4444;
-            color: white;
+            background: #fee2e2;
+            color: #ef4444;
             border: none;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            font-weight: 700;
             cursor: pointer;
         }
-        .status { text-align: center; font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; }
+        .play-btn:active, .stop-btn:active { transform: translateY(1px); }
+        
+        .status { text-align: center; font-size: 0.7rem; color: #94a3b8; margin-top: 1rem; }
+        .save-note { font-size: 0.65rem; color: #10b981; text-align: center; margin-top: 4px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="app-card">
-    <h1>🇺🇸 English Training 🇬🇧</h1>
-    <textarea id="textInput" placeholder="Enter English text..."></textarea>
+    <h1>🇺🇸 English Training Pro 🇬🇧</h1>
+    <textarea id="textInput" placeholder="Paste English text to practice..."></textarea>
     
     <div class="control-panel">
         <div class="row">
-            <label>Accent</label>
+            <label>Voice Accent</label>
             <select id="voiceSelect">
                 <option value="en-US">American (US)</option>
                 <option value="en-GB">British (UK)</option>
             </select>
         </div>
 
-        <div class="row">
-            <label>Speed</label>
-            <input type="range" id="rateInput" min="0.5" max="2.0" step="0.1" value="1.0">
-            <span id="speedVal">1.0x</span>
+        <div class="slider-box">
+            <div class="slider-header">
+                <label>Target Speed</label>
+                <div>
+                    <span class="wpm-display" id="wpmText">150</span> <small>WPM</small>
+                </div>
+            </div>
+            <input type="range" id="wpmSlider" min="70" max="250" step="5" value="150">
+            <div class="rate-display" id="rateDetail">Playback Rate: 1.00x</div>
         </div>
 
         <div class="row">
-            <label class="repeat-toggle">
-                <input type="checkbox" id="repeatMode" checked> Loop Playback
+            <label class="checkbox-label">
+                <input type="checkbox" id="repeatMode" checked> Auto Repeat Loop
             </label>
-            <button class="stop-btn" onclick="stopAll()">Stop</button>
         </div>
 
-        <button class="main-btn" onclick="startPlayback()">▶ Start Practice</button>
+        <div class="btn-group">
+            <button class="play-btn" id="startBtn">▶ Start Training</button>
+            <button class="stop-btn" id="stopBtn">Stop</button>
+        </div>
     </div>
     
-    <!-- バックグラウンド維持用の隠しオーディオ -->
     <audio id="silentAudio" loop>
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
     </audio>
 
-    <div class="status" id="statusText">Ready to start</div>
+    <div class="status" id="statusText">Ready</div>
+    <div class="save-note" id="saveNote">Settings auto-saved!</div>
 </div>
 
 <script>
@@ -117,35 +174,77 @@
     const textInput = document.getElementById('textInput');
     const repeatMode = document.getElementById('repeatMode');
     const voiceSelect = document.getElementById('voiceSelect');
-    const rateInput = document.getElementById('rateInput');
-    const speedVal = document.getElementById('speedVal');
+    const wpmSlider = document.getElementById('wpmSlider');
+    const wpmText = document.getElementById('wpmText');
+    const rateDetail = document.getElementById('rateDetail');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const saveNote = document.getElementById('saveNote');
 
-    rateInput.oninput = () => speedVal.textContent = rateInput.value + 'x';
+    const BASE_WPM = 150; 
 
-    function startPlayback() {
-        if (!textInput.value.trim()) return;
+    // --- 保存と読み込みのロジック ---
+
+    function saveToStorage() {
+        const data = {
+            text: textInput.value,
+            voice: voiceSelect.value,
+            wpm: wpmSlider.value,
+            repeat: repeatMode.checked
+        };
+        localStorage.setItem('english_player_settings', JSON.stringify(data));
         
-        // 1. 無音オーディオを再生（ブラウザの休止を防ぐヒント）
-        silentAudio.play().catch(e => console.log("Audio play blocked"));
-        
-        speak();
+        // 保存通知をチラ見せ
+        saveNote.style.display = 'block';
+        setTimeout(() => { saveNote.style.display = 'none'; }, 1500);
+    }
+
+    function loadFromStorage() {
+        const saved = localStorage.getItem('english_player_settings');
+        if (saved) {
+            const data = JSON.parse(saved);
+            textInput.value = data.text || "";
+            voiceSelect.value = data.voice || "en-US";
+            wpmSlider.value = data.wpm || 150;
+            repeatMode.checked = data.repeat !== undefined ? data.repeat : true;
+            updateDisplay();
+        }
+    }
+
+    function updateDisplay() {
+        const rate = parseFloat(wpmSlider.value) / BASE_WPM;
+        wpmText.textContent = wpmSlider.value;
+        rateDetail.textContent = `Playback Rate: ${rate.toFixed(2)}x`;
+    }
+
+    // 入力や変更があるたびに自動保存
+    [textInput, voiceSelect, wpmSlider, repeatMode].forEach(el => {
+        el.addEventListener('input', () => {
+            updateDisplay();
+            saveToStorage();
+        });
+    });
+
+    // --- 再生ロジック ---
+
+    function getRate() {
+        return parseFloat(wpmSlider.value) / BASE_WPM;
     }
 
     function speak() {
         synth.cancel();
-        
+        if (!textInput.value.trim()) return;
+
         const utterance = new SpeechSynthesisUtterance(textInput.value);
         utterance.lang = voiceSelect.value;
-        utterance.rate = parseFloat(rateInput.value);
+        utterance.rate = getRate();
 
         utterance.onstart = () => {
-            statusText.textContent = "Playing...";
+            statusText.textContent = `Playing: ${wpmSlider.value} WPM`;
         };
 
         utterance.onend = () => {
             if (repeatMode.checked) {
-                // バックグラウンド時はsetTimeoutが遅れることがあるため即座に再帰
-                statusText.textContent = "Repeating...";
                 speak();
             } else {
                 statusText.textContent = "Finished";
@@ -153,25 +252,28 @@
             }
         };
 
-        utterance.onerror = (event) => {
-            console.error("Speech Error:", event);
+        utterance.onerror = () => {
             if (repeatMode.checked) speak();
         };
 
         synth.speak(utterance);
     }
 
-    function stopAll() {
-        repeatMode.checked = false;
+    startBtn.onclick = () => {
+        if (!textInput.value.trim()) return;
+        silentAudio.play().catch(() => {});
+        speak();
+    };
+
+    stopBtn.onclick = () => {
         synth.cancel();
         silentAudio.pause();
         statusText.textContent = "Stopped";
-    }
-
-    // タブが閉じられる時に確実に停止
-    window.onbeforeunload = () => {
-        synth.cancel();
     };
+
+    // 初期化
+    window.onload = loadFromStorage;
+    window.onbeforeunload = () => synth.cancel();
 </script>
 
 </body>
