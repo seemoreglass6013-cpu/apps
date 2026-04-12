@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English WPM Trainer Pro</title>
+    <title>English 5-Accent Trainer</title>
     <style>
         :root {
             --primary: #2563eb;
+            --danger: #ef4444;
             --bg: #f8fafc;
             --card: #ffffff;
             --text-main: #1e293b;
@@ -31,32 +32,49 @@
         }
         h1 { font-size: 1.25rem; text-align: center; margin-bottom: 1.5rem; }
         
+        .textarea-container { position: relative; }
         textarea {
             width: 100%;
-            height: 160px;
+            height: 180px;
             padding: 16px;
             border: 2px solid #e2e8f0;
             border-radius: 16px;
             font-size: 16px;
             box-sizing: border-box;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             transition: border-color 0.2s;
             line-height: 1.5;
             font-family: inherit;
         }
         textarea:focus { border-color: var(--primary); outline: none; }
 
+        .clear-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #f1f5f9;
+            color: var(--text-sub);
+            border: none;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .clear-btn:hover { background: #e2e8f0; color: var(--danger); }
+
         .control-panel { display: flex; flex-direction: column; gap: 1.25rem; }
-        
-        .row { display: flex; align-items: center; justify-content: space-between; }
+        .row { display: flex; flex-direction: column; gap: 8px; }
         label { font-size: 0.85rem; font-weight: 700; color: var(--text-sub); }
         
         select { 
-            padding: 8px 12px;
-            border-radius: 8px;
+            padding: 12px;
+            border-radius: 10px;
             border: 1px solid #cbd5e1;
             background: white;
-            font-size: 14px;
+            font-size: 15px;
+            width: 100%;
+            cursor: pointer;
         }
 
         .slider-box {
@@ -71,30 +89,14 @@
             margin-bottom: 8px;
         }
         .wpm-display { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
-        .rate-display { font-size: 0.75rem; color: var(--text-sub); }
-
-        input[type="range"] {
-            width: 100%;
-            margin: 10px 0;
-            cursor: pointer;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
+        
+        input[type="range"] { width: 100%; margin: 10px 0; cursor: pointer; }
 
         .btn-group {
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 12px;
-            margin-top: 5px;
         }
-
         .play-btn {
             background: var(--primary);
             color: white;
@@ -104,176 +106,152 @@
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
         }
         .stop-btn {
             background: #fee2e2;
-            color: #ef4444;
+            color: var(--danger);
             border: none;
             padding: 16px 20px;
             border-radius: 14px;
             font-weight: 700;
             cursor: pointer;
         }
-        .play-btn:active, .stop-btn:active { transform: translateY(1px); }
-        
         .status { text-align: center; font-size: 0.7rem; color: #94a3b8; margin-top: 1rem; }
-        .save-note { font-size: 0.65rem; color: #10b981; text-align: center; margin-top: 4px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="app-card">
-    <h1>🇺🇸 English Training Pro 🇬🇧</h1>
-    <textarea id="textInput" placeholder="Paste English text to practice..."></textarea>
+    <h1>🌍 English Accent Trainer</h1>
+    
+    <div class="textarea-container">
+        <button class="clear-btn" id="clearBtn">Clear</button>
+        <textarea id="textInput" placeholder="Paste English text..."></textarea>
+    </div>
     
     <div class="control-panel">
         <div class="row">
-            <label>Voice Accent</label>
-            <select id="voiceSelect">
-                <option value="en-US">American (US)</option>
-                <option value="en-GB">British (UK)</option>
+            <label>Select Accent (Female preferred)</label>
+            <select id="accentSelect">
+                <option value="en-US">🇺🇸 American (US)</option>
+                <option value="en-GB">🇬🇧 British (UK)</option>
+                <option value="en-AU">🇦🇺 Australian (AU)</option>
+                <option value="en-IN">🇮🇳 Indian (IN)</option>
+                <option value="en-IE">🇮🇪 Irish (IE)</option>
             </select>
         </div>
 
         <div class="slider-box">
             <div class="slider-header">
                 <label>Target Speed</label>
-                <div>
-                    <span class="wpm-display" id="wpmText">150</span> <small>WPM</small>
-                </div>
+                <div><span class="wpm-display" id="wpmText">150</span> <small>WPM</small></div>
             </div>
             <input type="range" id="wpmSlider" min="70" max="250" step="5" value="150">
-            <div class="rate-display" id="rateDetail">Playback Rate: 1.00x</div>
-        </div>
-
-        <div class="row">
-            <label class="checkbox-label">
-                <input type="checkbox" id="repeatMode" checked> Auto Repeat Loop
-            </label>
         </div>
 
         <div class="btn-group">
-            <button class="play-btn" id="startBtn">▶ Start Training</button>
+            <button class="play-btn" id="startBtn">▶ Play</button>
             <button class="stop-btn" id="stopBtn">Stop</button>
         </div>
     </div>
     
-    <audio id="silentAudio" loop>
-        <source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
-    </audio>
-
     <div class="status" id="statusText">Ready</div>
-    <div class="save-note" id="saveNote">Settings auto-saved!</div>
 </div>
 
 <script>
     const synth = window.speechSynthesis;
-    const silentAudio = document.getElementById('silentAudio');
-    const statusText = document.getElementById('statusText');
     const textInput = document.getElementById('textInput');
-    const repeatMode = document.getElementById('repeatMode');
-    const voiceSelect = document.getElementById('voiceSelect');
+    const accentSelect = document.getElementById('accentSelect');
     const wpmSlider = document.getElementById('wpmSlider');
     const wpmText = document.getElementById('wpmText');
-    const rateDetail = document.getElementById('rateDetail');
+    const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
-    const saveNote = document.getElementById('saveNote');
+    const clearBtn = document.getElementById('clearBtn');
 
     const BASE_WPM = 150; 
+    let voices = [];
 
-    // --- 保存と読み込みのロジック ---
-
-    function saveToStorage() {
-        const data = {
-            text: textInput.value,
-            voice: voiceSelect.value,
-            wpm: wpmSlider.value,
-            repeat: repeatMode.checked
-        };
-        localStorage.setItem('english_player_settings', JSON.stringify(data));
+    // --- Voice Discovery ---
+    function findBestVoice(langCode) {
+        voices = synth.getVoices();
+        // 1. 言語コードが完全一致する声を探す
+        let filtered = voices.filter(v => v.lang.startsWith(langCode));
         
-        // 保存通知をチラ見せ
-        saveNote.style.display = 'block';
-        setTimeout(() => { saveNote.style.display = 'none'; }, 1500);
+        // 2. その中で"Female"や女声らしい名前を優先
+        const femaleNames = ['Samantha', 'Karen', 'Moira', 'Tessa', 'Alice', 'Google UK English Female', 'Veena', 'Victoria'];
+        let femaleVoice = filtered.find(v => femaleNames.some(name => v.name.includes(name)));
+        
+        return femaleVoice || filtered[0]; // 見つからなければその言語の最初の声
     }
 
-    function loadFromStorage() {
-        const saved = localStorage.getItem('english_player_settings');
+    // Chrome対策：音声リストのロードを待機
+    window.speechSynthesis.onvoiceschanged = () => { voices = synth.getVoices(); };
+
+    // --- Data Persistence ---
+    function saveData() {
+        localStorage.setItem('en_player_v5', JSON.stringify({
+            text: textInput.value,
+            accent: accentSelect.value,
+            wpm: wpmSlider.value
+        }));
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('en_player_v5');
         if (saved) {
             const data = JSON.parse(saved);
             textInput.value = data.text || "";
-            voiceSelect.value = data.voice || "en-US";
+            accentSelect.value = data.accent || "en-US";
             wpmSlider.value = data.wpm || 150;
-            repeatMode.checked = data.repeat !== undefined ? data.repeat : true;
-            updateDisplay();
+            wpmText.textContent = wpmSlider.value;
         }
     }
 
-    function updateDisplay() {
-        const rate = parseFloat(wpmSlider.value) / BASE_WPM;
-        wpmText.textContent = wpmSlider.value;
-        rateDetail.textContent = `Playback Rate: ${rate.toFixed(2)}x`;
-    }
-
-    // 入力や変更があるたびに自動保存
-    [textInput, voiceSelect, wpmSlider, repeatMode].forEach(el => {
-        el.addEventListener('input', () => {
-            updateDisplay();
-            saveToStorage();
-        });
-    });
-
-    // --- 再生ロジック ---
-
+    // --- Actions ---
     function getRate() {
         return parseFloat(wpmSlider.value) / BASE_WPM;
     }
 
-    function speak() {
+    startBtn.onclick = () => {
         synth.cancel();
         if (!textInput.value.trim()) return;
-
+        
         const utterance = new SpeechSynthesisUtterance(textInput.value);
-        utterance.lang = voiceSelect.value;
+        const targetVoice = findBestVoice(accentSelect.value);
+        
+        if (targetVoice) {
+            utterance.voice = targetVoice;
+        }
+        
+        utterance.lang = accentSelect.value;
         utterance.rate = getRate();
-
-        utterance.onstart = () => {
-            statusText.textContent = `Playing: ${wpmSlider.value} WPM`;
-        };
-
-        utterance.onend = () => {
-            if (repeatMode.checked) {
-                speak();
-            } else {
-                statusText.textContent = "Finished";
-                silentAudio.pause();
-            }
-        };
-
-        utterance.onerror = () => {
-            if (repeatMode.checked) speak();
-        };
-
+        
+        utterance.onstart = () => statusText.textContent = `Speaking: ${wpmSlider.value} WPM (${accentSelect.options[accentSelect.selectedIndex].text})`;
+        utterance.onend = () => statusText.textContent = "Finished";
+        
         synth.speak(utterance);
-    }
-
-    startBtn.onclick = () => {
-        if (!textInput.value.trim()) return;
-        silentAudio.play().catch(() => {});
-        speak();
     };
 
     stopBtn.onclick = () => {
         synth.cancel();
-        silentAudio.pause();
         statusText.textContent = "Stopped";
     };
 
-    // 初期化
-    window.onload = loadFromStorage;
-    window.onbeforeunload = () => synth.cancel();
+    clearBtn.onclick = () => {
+        textInput.value = "";
+        saveData();
+        statusText.textContent = "Cleared";
+    };
+
+    [textInput, accentSelect, wpmSlider].forEach(el => {
+        el.addEventListener('input', () => {
+            wpmText.textContent = wpmSlider.value;
+            saveData();
+        });
+    });
+
+    window.onload = loadData;
 </script>
 
 </body>
