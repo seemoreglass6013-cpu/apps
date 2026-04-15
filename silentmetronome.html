@@ -3,114 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Silent Metronome</title>
+    <title>Visual Progress Metronome</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #1a1a1a;
+            background-color: #121212;
             color: white;
-            transition: background-color 0.05s;
+            overflow: hidden;
         }
-        .flash { background-color: #f0f0f0 !important; }
+
+        /* プログレスバーのコンテナ */
+        .progress-container {
+            width: 100%;
+            height: 15px;
+            background: #333;
+            position: fixed;
+            top: 0;
+        }
+
+        /* 動くバー本体 */
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+        }
+
+        /* 1拍目の強調フラッシュ用 */
+        .flash-accent { background-color: #ff4444 !important; }
+        .flash-normal { background-color: #ffffff !important; }
+
         .controls {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2rem;
-            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2.5rem;
+            border-radius: 20px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        .bpm-display { font-size: 3rem; font-weight: bold; margin-bottom: 1rem; }
-        input[type="range"] { width: 250px; margin: 1rem 0; }
+
+        .bpm-display { font-size: 4rem; font-weight: 800; margin-bottom: 0.5rem; }
+        
+        /* 拍数インジケーター */
+        .dots { display: flex; justify-content: center; margin-bottom: 2rem; }
+        .dot {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #333; margin: 0 10px; transition: transform 0.1s;
+        }
+        .dot.active-normal { background: white; transform: scale(1.3); }
+        .dot.active-accent { background: #ff4444; transform: scale(1.5); }
+
+        input[type="range"] { width: 280px; margin: 1.5rem 0; cursor: pointer; }
         select, button {
-            padding: 10px 20px;
-            font-size: 1rem;
-            border-radius: 5px;
-            border: none;
-            cursor: pointer;
-            margin: 5px;
+            padding: 12px 24px; font-size: 1rem; border-radius: 8px;
+            border: none; cursor: pointer; margin: 5px; transition: 0.2s;
         }
         button { background-color: #4CAF50; color: white; font-weight: bold; }
+        button:active { transform: scale(0.95); }
         button.stop { background-color: #f44336; }
-        .labels { margin-top: 10px; font-style: italic; color: #ccc; }
+        
+        .labels { margin-top: 15px; font-size: 1.2rem; color: #888; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
+<div class="progress-container">
+    <div id="progress-bar"></div>
+</div>
+
 <div class="controls">
-    <div class="bpm-display"><span id="bpmValue">120</span> BPM</div>
-    
-    <input type="range" id="bpmSlider" min="40" max="250" value="120">
-    
-    <br>
-    
-    <select id="tempoPreset">
-        <option value="">-- 速度記号を選択 --</option>
-        <option value="40">Grave (40)</option>
-        <option value="50">Adagio (50)</option>
-        <option value="66">Andante (66)</option>
-        <option value="88">Moderato (88)</option>
-        <option value="120">Allegro (120)</option>
-        <option value="160">Presto (160)</option>
-        <option value="200">Prestissimo (200)</option>
-    </select>
-    
-    <br><br>
-    
-    <button id="startStopBtn">START</button>
     <div id="tempoLabel" class="labels">Allegro</div>
+    <div class="bpm-display"><span id="bpmValue">120</span></div>
+    
+    <div class="dots" id="dotContainer">
+        </div>
+
+    <input type="range" id="bpmSlider" min="40" max="250" value="120">
+    <br>
+    <select id="tempoPreset">
+        <option value="">-- PRESET --</option>
+        <option value="40">Grave (40)</option>
+        <option value="60">Adagio (60)</option>
+        <option value="80">Andante (80)</option>
+        <option value="120">Allegro (120)</option>
+        <option value="168">Presto (168)</option>
+    </select>
+    <br><br>
+    <button id="startStopBtn">START</button>
 </div>
 
 <script>
     let bpm = 120;
     let isPlaying = false;
-    let timer = null;
+    let currentBeat = 0;
+    const beatsPerMeasure = 4; // 4拍子固定
+    let animationId = null;
+    let startTime = null;
 
-    const body = document.body;
+    const progressBar = document.getElementById('progress-bar');
     const bpmSlider = document.getElementById('bpmSlider');
     const bpmValue = document.getElementById('bpmValue');
     const startStopBtn = document.getElementById('startStopBtn');
     const tempoPreset = document.getElementById('tempoPreset');
     const tempoLabel = document.getElementById('tempoLabel');
+    const dotContainer = document.getElementById('dotContainer');
 
-    const tempoNames = [
-        { name: "Grave", max: 44 },
-        { name: "Largo", max: 50 },
-        { name: "Adagio", max: 60 },
-        { name: "Andante", max: 76 },
-        { name: "Moderato", max: 108 },
-        { name: "Allegro", max: 156 },
-        { name: "Presto", max: 200 },
-        { name: "Prestissimo", max: 250 }
-    ];
+    // 拍数ドットの生成
+    for (let i = 0; i < beatsPerMeasure; i++) {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        dotContainer.appendChild(dot);
+    }
+    const dots = document.querySelectorAll('.dot');
 
     function updateTempoLabel(val) {
-        const found = tempoNames.find(t => val <= t.max);
-        tempoLabel.innerText = found ? found.name : "Prestissimo";
+        if (val < 60) tempoLabel.innerText = "Largo";
+        else if (val < 76) tempoLabel.innerText = "Adagio";
+        else if (val < 108) tempoLabel.innerText = "Andante";
+        else if (val < 120) tempoLabel.innerText = "Moderato";
+        else if (val < 156) tempoLabel.innerText = "Allegro";
+        else if (val < 200) tempoLabel.innerText = "Presto";
+        else tempoLabel.innerText = "Prestissimo";
     }
 
-    function flash() {
-        body.classList.add('flash');
-        setTimeout(() => body.classList.remove('flash'), 50);
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const beatDuration = 60000 / bpm;
+        const elapsed = timestamp - startTime;
+        
+        // 進捗率 (0 to 100)
+        let progress = (elapsed / beatDuration) * 100;
+
+        if (progress >= 100) {
+            // 拍の切り替わり
+            currentBeat = (currentBeat % beatsPerMeasure) + 1;
+            triggerFlash(currentBeat === 1);
+            startTime = timestamp;
+            progress = 0;
+        }
+
+        progressBar.style.width = progress + '%';
+        // 1拍目はバーの色を変える
+        progressBar.style.backgroundColor = (currentBeat === 0 || currentBeat === 4) ? '#ff4444' : '#4CAF50';
+
+        animationId = requestAnimationFrame(animate);
     }
 
-    function startMetronome() {
-        if (timer) clearInterval(timer);
-        const interval = (60 / bpm) * 1000;
-        timer = setInterval(flash, interval);
-        flash(); // 初回
+    function triggerFlash(isAccent) {
+        // ドットの更新
+        dots.forEach((d, i) => {
+            d.classList.remove('active-normal', 'active-accent');
+            if (i === (currentBeat - 1)) {
+                d.classList.add(isAccent ? 'active-accent' : 'active-normal');
+            }
+        });
+
+        // 画面フラッシュ（控えめ）
+        const flashClass = isAccent ? 'flash-accent' : 'flash-normal';
+        document.body.classList.add(flashClass);
+        setTimeout(() => document.body.classList.remove(flashClass), 40);
     }
 
     bpmSlider.addEventListener('input', (e) => {
         bpm = e.target.value;
         bpmValue.innerText = bpm;
         updateTempoLabel(bpm);
-        if (isPlaying) startMetronome();
     });
 
     tempoPreset.addEventListener('change', (e) => {
@@ -119,17 +181,21 @@
             bpmSlider.value = bpm;
             bpmValue.innerText = bpm;
             updateTempoLabel(bpm);
-            if (isPlaying) startMetronome();
         }
     });
 
     startStopBtn.addEventListener('click', () => {
         if (isPlaying) {
-            clearInterval(timer);
+            cancelAnimationFrame(animationId);
             startStopBtn.innerText = 'START';
             startStopBtn.classList.remove('stop');
+            progressBar.style.width = '0%';
+            dots.forEach(d => d.classList.remove('active-normal', 'active-accent'));
+            currentBeat = 0;
         } else {
-            startMetronome();
+            startTime = null;
+            currentBeat = 0;
+            animationId = requestAnimationFrame(animate);
             startStopBtn.innerText = 'STOP';
             startStopBtn.classList.add('stop');
         }
