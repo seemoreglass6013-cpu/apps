@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Silent Metronome</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #1a1a1a;
+            color: white;
+            transition: background-color 0.05s;
+        }
+        .flash { background-color: #f0f0f0 !important; }
+        .controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .bpm-display { font-size: 3rem; font-weight: bold; margin-bottom: 1rem; }
+        input[type="range"] { width: 250px; margin: 1rem 0; }
+        select, button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button { background-color: #4CAF50; color: white; font-weight: bold; }
+        button.stop { background-color: #f44336; }
+        .labels { margin-top: 10px; font-style: italic; color: #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div class="bpm-display"><span id="bpmValue">120</span> BPM</div>
+    
+    <input type="range" id="bpmSlider" min="40" max="250" value="120">
+    
+    <br>
+    
+    <select id="tempoPreset">
+        <option value="">-- 速度記号を選択 --</option>
+        <option value="40">Grave (40)</option>
+        <option value="50">Adagio (50)</option>
+        <option value="66">Andante (66)</option>
+        <option value="88">Moderato (88)</option>
+        <option value="120">Allegro (120)</option>
+        <option value="160">Presto (160)</option>
+        <option value="200">Prestissimo (200)</option>
+    </select>
+    
+    <br><br>
+    
+    <button id="startStopBtn">START</button>
+    <div id="tempoLabel" class="labels">Allegro</div>
+</div>
+
+<script>
+    let bpm = 120;
+    let isPlaying = false;
+    let timer = null;
+
+    const body = document.body;
+    const bpmSlider = document.getElementById('bpmSlider');
+    const bpmValue = document.getElementById('bpmValue');
+    const startStopBtn = document.getElementById('startStopBtn');
+    const tempoPreset = document.getElementById('tempoPreset');
+    const tempoLabel = document.getElementById('tempoLabel');
+
+    const tempoNames = [
+        { name: "Grave", max: 44 },
+        { name: "Largo", max: 50 },
+        { name: "Adagio", max: 60 },
+        { name: "Andante", max: 76 },
+        { name: "Moderato", max: 108 },
+        { name: "Allegro", max: 156 },
+        { name: "Presto", max: 200 },
+        { name: "Prestissimo", max: 250 }
+    ];
+
+    function updateTempoLabel(val) {
+        const found = tempoNames.find(t => val <= t.max);
+        tempoLabel.innerText = found ? found.name : "Prestissimo";
+    }
+
+    function flash() {
+        body.classList.add('flash');
+        setTimeout(() => body.classList.remove('flash'), 50);
+    }
+
+    function startMetronome() {
+        if (timer) clearInterval(timer);
+        const interval = (60 / bpm) * 1000;
+        timer = setInterval(flash, interval);
+        flash(); // 初回
+    }
+
+    bpmSlider.addEventListener('input', (e) => {
+        bpm = e.target.value;
+        bpmValue.innerText = bpm;
+        updateTempoLabel(bpm);
+        if (isPlaying) startMetronome();
+    });
+
+    tempoPreset.addEventListener('change', (e) => {
+        if (e.target.value) {
+            bpm = e.target.value;
+            bpmSlider.value = bpm;
+            bpmValue.innerText = bpm;
+            updateTempoLabel(bpm);
+            if (isPlaying) startMetronome();
+        }
+    });
+
+    startStopBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            clearInterval(timer);
+            startStopBtn.innerText = 'START';
+            startStopBtn.classList.remove('stop');
+        } else {
+            startMetronome();
+            startStopBtn.innerText = 'STOP';
+            startStopBtn.classList.add('stop');
+        }
+        isPlaying = !isPlaying;
+    });
+</script>
+
+</body>
+</html>
