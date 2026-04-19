@@ -3,147 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drum Practice Review</title>
+    <title>Drum Hybrid Review 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-        }
-        .card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .btn-primary {
-            background-color: #3b82f6;
-            color: white;
-            transition: all 0.2s;
-        }
-        .btn-primary:active {
-            transform: scale(0.98);
-            background-color: #2563eb;
-        }
+        body { background-color: #0f172a; color: #f1f5f9; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        .card { background: #1e293b; border-radius: 1rem; border: 1px solid #334155; }
+        .input-field { background-color: #2a2a2a; border: 1px solid #444; color: white; }
+        .input-field:focus { border-color: #3b82f6; outline: none; }
+        .label-text { font-size: 0.75rem; font-weight: bold; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem; display: block; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        /* 数字入力の矢印を消す（スッキリさせるため） */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 pb-20">
     <div class="max-w-md mx-auto">
         <header class="text-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Drum Review Sheet</h1>
-            <p class="text-sm text-gray-500">プロセス・レビュー・シート</p>
+            <h1 class="text-2xl font-black text-blue-400">Drum Hybrid Review</h1>
+            <p class="text-xs text-slate-400 tracking-widest">2026 SPRING ROUTINE</p>
         </header>
 
-        <div class="card p-6 space-y-6">
-            <!-- 1. 本日のTodo (自動選択/手動変更) -->
+        <div class="card p-6 space-y-5 shadow-2xl">
+            <!-- 日付選択 -->
             <section>
-                <label class="block text-sm font-bold text-gray-700 mb-2">1. 本日のTodo</label>
-                <select id="todo-select" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="月曜：Ritual (BPM 100) ブラシ">月曜：Ritual (BPM 100) ブラシ</option>
-                    <option value="火曜：Crazy Army (BPM 80) JLL">火曜：Crazy Army (BPM 80) JLL</option>
-                    <option value="水曜：Ritual (BPM 140-160) 7A">水曜：Ritual (BPM 140-160) 7A</option>
-                    <option value="木曜：Crazy Army (BPM 70) 5A">木曜：Crazy Army (BPM 70) 5A</option>
-                    <option value="金曜：Ritual (BPM 120-130) 5A">金曜：Ritual (BPM 120-130) 5A</option>
-                    <option value="土曜：Crazy & Ritual 苦手箇所">土曜：Crazy & Ritual 苦手箇所</option>
-                    <option value="日曜：フリートレーニング / 復習">日曜：フリートレーニング / 復習</option>
+                <label class="label-text">Date</label>
+                <input type="date" id="practice-date" class="w-full p-3 input-field rounded-xl text-sm" onchange="updateMenuByDate()">
+            </section>
+
+            <!-- 1. 本日のメニュー選択 -->
+            <section>
+                <label class="label-text">1. 練習メニュー</label>
+                <select id="todo-select" class="w-full p-4 input-field rounded-xl text-sm leading-relaxed" onchange="updateBpmPlaceholder()">
+                    <option value="月：ブラシ [基礎] Ritual + StickControl p5">月曜：ブラシ/筋力 (Ritual+SC p5)</option>
+                    <option value="火：7A+JLL [ハネ] CrazyArmy + Syncopation">火曜：7A+JLL/独立 (Crazy+Synco 3連)</option>
+                    <option value="水：7A [高速] Ritual + StickControl">水曜：7A/脱力高速 (Ritual+SC 高速)</option>
+                    <option value="木：5A [ダイナミクス] CrazyArmy + Syncopation">木曜：5A/消音アクセント (Crazy+Synco)</option>
+                    <option value="金：5A [持久力] Ritual + Syncopation">金曜：5A/通し完走 (Ritual+Synco)</option>
+                    <option value="土：5A/7A [統合] Syncopation 応用">土曜：録音・応用/セット (Dream Theater的キメ)</option>
+                    <option value="日：自由 [対局] Session / Chess">日曜：自由/Session & Chess</option>
                 </select>
             </section>
 
-            <!-- 2. 成長の深掘り -->
+            <!-- BPM メモ (数字入力モード) -->
+            <section class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="label-text">BPM (Main)</label>
+                    <input type="number" 
+                           inputmode="numeric" 
+                           id="bpm-main" 
+                           class="w-full p-3 input-field rounded-xl text-sm" 
+                           placeholder="Ritual等">
+                </div>
+                <div>
+                    <label class="label-text">BPM (Sub)</label>
+                    <input type="number" 
+                           inputmode="numeric" 
+                           id="bpm-sub" 
+                           class="w-full p-3 input-field rounded-xl text-sm" 
+                           placeholder="SC/Synco等">
+                </div>
+            </section>
+
+            <!-- 2. チェックポイント -->
+            <section class="grid grid-cols-2 gap-3">
+                <div class="col-span-2">
+                    <label class="label-text">2. チェックポイント</label>
+                </div>
+                <label class="flex items-center space-x-2 p-3 bg-slate-800 rounded-xl cursor-pointer">
+                    <input type="checkbox" id="check-sync" class="w-5 h-5 accent-blue-500">
+                    <span class="text-xs text-slate-300 font-medium">声・足の独立性</span>
+                </label>
+                <label class="flex items-center space-x-2 p-3 bg-slate-800 rounded-xl cursor-pointer">
+                    <input type="checkbox" id="check-relax" class="w-5 h-5 accent-blue-500">
+                    <span class="text-xs text-slate-300 font-medium">脱力・ダイナミクス</span>
+                </label>
+            </section>
+
+            <!-- 3. チェス的「分析」 -->
             <section class="space-y-4">
-                <label class="block text-sm font-bold text-gray-700">2. 成長の深掘り（プロセス・レビュー）</label>
+                <label class="label-text">3. チェス的分析 (プロセス・レビュー)</label>
                 <div>
-                    <span class="text-xs text-blue-600 font-medium">● うまくいったところ</span>
-                    <textarea id="success" class="w-full mt-1 p-3 border border-gray-300 rounded-lg min-h-[80px]" placeholder="例：リラックスして叩けた"></textarea>
+                    <span class="text-[10px] text-green-400 font-bold uppercase tracking-wider">★ 今日の好手 (Best Move)</span>
+                    <textarea id="best-move" class="w-full mt-1 p-3 input-field rounded-xl text-sm h-20" placeholder="例: 低速BPM60で足が釣られなかった"></textarea>
                 </div>
                 <div>
-                    <span class="text-xs text-red-600 font-medium">● うまくいかなかったところ</span>
-                    <textarea id="failure" class="w-full mt-1 p-3 border border-gray-300 rounded-lg min-h-[80px]" placeholder="例：左手のダブルが追いつかなかった"></textarea>
+                    <span class="text-[10px] text-red-400 font-bold uppercase tracking-wider">▲ 疑問手 (Inaccuracy)</span>
+                    <textarea id="bad-move" class="w-full mt-1 p-3 input-field rounded-xl text-sm h-20" placeholder="例: 左手のパラディドルが走った"></textarea>
                 </div>
             </section>
 
-            <!-- 3. 自分への褒めポイント -->
+            <!-- 4. 自分への褒めポイント -->
             <section>
-                <label class="block text-sm font-bold text-gray-700 mb-2">3. 本日の「自分への褒めポイント」</label>
-                <textarea id="praise" class="w-full p-3 border border-gray-300 rounded-lg min-h-[80px]" placeholder="例：集中力が途切れずに30分完走できた！"></textarea>
+                <label class="label-text">4. 今日の「自分への褒めポイント」</label>
+                <textarea id="praise" class="w-full p-3 input-field rounded-xl text-sm h-20" placeholder="取り組んだ姿勢や新たな気づき"></textarea>
             </section>
 
-            <!-- アクションボタン -->
-            <div class="pt-4 space-y-3">
-                <button onclick="copyToClipboard()" class="w-full btn-primary py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
-                    <span>📋 記録をコピーする</span>
-                </button>
-                <button onclick="resetForm()" class="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-                    内容をリセット
-                </button>
-            </div>
+            <!-- アクション -->
+            <button onclick="copyReview()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold text-lg shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95">
+                <span>📋 記録をコピーする</span>
+            </button>
         </div>
 
-        <!-- コピー通知アラート (カスタム) -->
-        <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-sm font-medium opacity-0 transition-opacity pointer-events-none">
-            コピーしました！メモアプリへ貼り付けてください。
+        <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-opacity pointer-events-none shadow-2xl z-50">
+            コピー完了！
         </div>
 
-        <footer class="mt-8 text-center text-xs text-gray-400">
-            Keep Drumming! Daily Stick Control Practice
+        <footer class="mt-8 text-center text-[10px] text-slate-500 tracking-widest uppercase">
+            Independence & Dynamics Mastery
         </footer>
     </div>
 
     <script>
-        // 今日の曜日に合わせてTodoを自動選択
+        const bpmGuides = [
+            { main: "100", sub: "60-80" },   // 月
+            { main: "60-80", sub: "70-80" }, // 火
+            { main: "140", sub: "140" },     // 水
+            { main: "70-80", sub: "70-80" }, // 木
+            { main: "120", sub: "70-80" },   // 金
+            { main: "70-80", sub: "70-80" }, // 土
+            { main: "-", sub: "-" }          // 日
+        ];
+
         window.onload = function() {
-            const dayOfWeek = new Date().getDay(); // 0: 日, 1: 月...
-            const select = document.getElementById('todo-select');
+            const today = new Date();
+            const dateInput = document.getElementById('practice-date');
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}`;
             
-            // 1(月)〜6(土)に合わせる。0(日)は一番下へ
-            if (dayOfWeek === 0) {
-                select.selectedIndex = 6;
-            } else {
-                select.selectedIndex = dayOfWeek - 1;
-            }
+            updateMenuByDate();
         };
 
-        function copyToClipboard() {
-            const todo = document.getElementById('todo-select').value;
-            const success = document.getElementById('success').value || "特になし";
-            const failure = document.getElementById('failure').value || "特になし";
-            const praise = document.getElementById('praise').value || "特になし";
-            
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
-
-            const text = `【ドラム練習記録】${dateStr}\n\n` +
-                         `1. 本日のTodo\n   ${todo}\n\n` +
-                         `2. 成長の深掘り\n   ・うまくいった点：${success}\n   ・うまくいかなかった点：${failure}\n\n` +
-                         `3. 自分への褒めポイント\n   ${praise}`;
-
-            // テキストエリアを作成してコピー (ブラウザ互換性のための従来の方法)
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                showToast();
-            } catch (err) {
-                console.error('コピーに失敗しました', err);
-            }
-            document.body.removeChild(textArea);
+        function updateMenuByDate() {
+            const dateVal = document.getElementById('practice-date').value;
+            if (!dateVal) return;
+            const selectedDate = new Date(dateVal);
+            const dayIndex = selectedDate.getDay(); 
+            const select = document.getElementById('todo-select');
+            select.selectedIndex = (dayIndex === 0) ? 6 : dayIndex - 1;
+            updateBpmPlaceholder();
         }
 
-        function showToast() {
+        function updateBpmPlaceholder() {
+            const select = document.getElementById('todo-select');
+            const idx = select.selectedIndex;
+            document.getElementById('bpm-main').placeholder = `目安: ${bpmGuides[idx].main}`;
+            document.getElementById('bpm-sub').placeholder = `目安: ${bpmGuides[idx].sub}`;
+        }
+
+        function copyReview() {
+            const dateVal = document.getElementById('practice-date').value;
+            const dateObj = new Date(dateVal);
+            const dateFormatted = dateObj.toLocaleDateString('ja-JP', { weekday: 'short', month: '2-digit', day: '2-digit' });
+
+            const todo = document.getElementById('todo-select').value;
+            const bpmMain = document.getElementById('bpm-main').value || "未入力";
+            const bpmSub = document.getElementById('bpm-sub').value || "未入力";
+            const sync = document.getElementById('check-sync').checked ? "✅達成" : "未達";
+            const relax = document.getElementById('check-relax').checked ? "✅良好" : "硬め";
+            const best = document.getElementById('best-move').value || "特になし";
+            const bad = document.getElementById('bad-move').value || "特になし";
+            const praise = document.getElementById('praise').value || "なし";
+
+            const text = `【Drum Practice】${dateFormatted}\n` +
+                         `━━━━━━━━━━━━━━━\n` +
+                         `■ Menu: ${todo}\n` +
+                         `■ BPM : Main[${bpmMain}] Sub[${bpmSub}]\n` +
+                         `■ Check: シンクロ[${sync}] 脱力[${relax}]\n\n` +
+                         `■ 今日の好手 (Best Move):\n   ${best}\n\n` +
+                         `■ 疑問手 (Inaccuracy):\n   ${bad}\n\n` +
+                         `■ 自分への褒めポイント:\n   ${praise}\n` +
+                         `━━━━━━━━━━━━━━━`;
+
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+
             const toast = document.getElementById('toast');
             toast.style.opacity = '1';
-            setTimeout(() => {
-                toast.style.opacity = '0';
-            }, 2000);
-        }
-
-        function resetForm() {
-            if (confirm('入力内容を消去しますか？')) {
-                document.getElementById('success').value = '';
-                document.getElementById('failure').value = '';
-                document.getElementById('praise').value = '';
-            }
+            setTimeout(() => toast.style.opacity = '0', 2000);
         }
     </script>
 </body>
