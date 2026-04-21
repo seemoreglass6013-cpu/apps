@@ -5,91 +5,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stealth Drummer Metronome</title>
     <style>
+        :root {
+            --bg-color: #000000;
+            --accent-color: #8b0000; /* 1拍目：暗い赤 */
+            --normal-color: #004d00; /* 2-4拍目：暗い緑 */
+            --text-ghost: #121212;  /* ほぼ見えない数字 */
+            --ui-bg: rgba(20, 20, 20, 0.9);
+        }
+
         body {
-            font-family: 'Courier New', Courier, monospace; /* 無機質なフォント */
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #000000; /* 完全な黒 */
-            color: #333; /* 初期状態は暗いグレー */
+            background-color: var(--bg-color);
+            color: #555;
             overflow: hidden;
-            transition: color 0.5s;
+            user-select: none;
         }
 
-        /* 超極細プログレスバー（画面最上部） */
+        /* 画面最上部の極細プログレスバー */
         .progress-container {
             width: 100%;
-            height: 4px; /* 極細 */
-            background: #111; /* ほぼ黒 */
+            height: 5px;
+            background: #080808;
             position: fixed;
             top: 0;
             left: 0;
+            z-index: 100;
         }
 
         #progress-bar {
             width: 0%;
             height: 100%;
-            background-color: #006400; /* 暗い緑 (DarkGreen) */
-            box-shadow: 0 0 5px rgba(0, 255, 0, 0.2); /* わずかな発光 */
+            background-color: var(--normal-color);
+            transition: box-shadow 0.05s;
         }
 
-        /* 巨大BPM表示（ステルス） */
+        /* 巨大なBPM表示（ステルス） */
         .bpm-display {
-            font-size: 15vw; /* 画面幅に合わせた巨大さ */
+            font-size: 35vw;
             font-weight: 900;
             position: absolute;
-            z-index: -1; /* コントロールの裏へ */
-            letter-spacing: -10px;
-            color: #1a1a1a; /* ほぼ見えないグレー */
+            z-index: 1;
+            color: var(--text-ghost);
+            letter-spacing: -1rem;
+            pointer-events: none;
         }
 
-        /* 演奏開始時にコントロールを隠すクラス */
-        .controls.playing {
-            opacity: 0.05; /* ほぼ透明 */
-            pointer-events: none; /* クリック不可 */
-            transition: opacity 1s;
-        }
-
+        /* 操作パネル */
         .controls {
-            background: rgba(10, 10, 10, 0.8);
+            position: relative;
+            z-index: 10;
+            background: var(--ui-bg);
             padding: 2rem;
-            border-radius: 10px;
+            border-radius: 12px;
             text-align: center;
             border: 1px solid #222;
-            transition: opacity 0.5s;
+            transition: opacity 0.8s, transform 0.8s;
         }
 
-        input[type="range"] { width: 250px; accent-color: #333; }
-        select, button {
-            padding: 10px 20px; border-radius: 5px; border: 1px solid #333;
-            background-color: #111; color: #888; cursor: pointer;
+        .controls.playing {
+            opacity: 0.03; /* 演奏中は極限まで透明に */
+            transform: scale(0.95);
         }
-        button#startStopBtn { background-color: #222; color: #fff; font-weight: bold; border: 1px solid #444;}
-        button#startStopBtn.stop { background-color: #8b0000; color: #fff; border: 1px solid #ff0000;} /* 暗い赤 */
+
+        .controls:hover {
+            opacity: 1 !important; /* ホップアップで再表示可能 */
+        }
+
+        .label-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .tempo-name {
+            font-size: 1.2rem;
+            color: #888;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        input[type="range"] {
+            width: 280px;
+            margin: 1.5rem 0;
+            accent-color: #444;
+            cursor: pointer;
+        }
+
+        select, button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background-color: #111;
+            color: #ccc;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button#startStopBtn {
+            background-color: #222;
+            color: #fff;
+            width: 120px;
+            font-weight: bold;
+        }
+
+        button#startStopBtn.stop {
+            background-color: #400;
+            border-color: #800;
+        }
+
+        .hint {
+            margin-top: 1rem;
+            font-size: 0.7rem;
+            color: #444;
+        }
     </style>
 </head>
 <body>
 
-<div class="bpm-display"><span id="bpmBackground">120</span></div>
+    <div class="progress-container">
+        <div id="progress-bar"></div>
+    </div>
 
-<div class="progress-container">
-    <div id="progress-bar"></div>
-</div>
+    <div class="bpm-display" id="bpmBackground">120</div>
 
-<div class="controls" id="controlPanel">
-    <input type="range" id="bpmSlider" min="40" max="250" value="120">
-    <br>
-    <select id="tempoPreset">
-        <option value="80">Andante (80)</option>
-        <option value="120" selected>Allegro (120)</option>
-        <option value="160">Presto (160)</option>
-    </select>
-    <br><br>
-    <button id="startStopBtn">START</button>
-</div>
+    <div class="controls" id="controlPanel">
+        <div class="label-group">
+            <div id="tempoName" class="tempo-name">Allegro</div>
+        </div>
+
+        <input type="range" id="bpmSlider" min="40" max="250" value="120">
+        
+        <br>
+        
+        <select id="tempoPreset">
+            <option value="40">Grave (40)</option>
+            <option value="60">Adagio (60)</option>
+            <option value="80">Andante (80)</option>
+            <option value="100">Moderato (100)</option>
+            <option value="120" selected>Allegro (120)</option>
+            <option value="168">Presto (168)</option>
+            <option value="200">Prestissimo (200)</option>
+        </select>
+        
+        <br><br>
+        
+        <button id="startStopBtn">START</button>
+        
+        <div class="hint">演奏中、パネルは透明になります。<br>画面中央タップで再表示。</div>
+    </div>
 
 <script>
     let bpm = 120;
@@ -104,7 +172,18 @@
     const bpmBackground = document.getElementById('bpmBackground');
     const startStopBtn = document.getElementById('startStopBtn');
     const tempoPreset = document.getElementById('tempoPreset');
+    const tempoName = document.getElementById('tempoName');
     const controlPanel = document.getElementById('controlPanel');
+
+    function getTempoLabel(val) {
+        if (val < 60) return "Grave";
+        if (val < 76) return "Adagio";
+        if (val < 108) return "Andante";
+        if (val < 120) return "Moderato";
+        if (val < 156) return "Allegro";
+        if (val < 200) return "Presto";
+        return "Prestissimo";
+    }
 
     function animate(timestamp) {
         if (!startTime) startTime = timestamp;
@@ -114,37 +193,44 @@
         let progress = (elapsed / beatDuration) * 100;
 
         if (progress >= 100) {
-            // 拍の切り替わり
             currentBeat = (currentBeat % beatsPerMeasure) + 1;
             startTime = timestamp;
             progress = 0;
             
-            // 拍の瞬間にバーを一瞬明るくする（フラッシュの代わり）
-            progressBar.style.boxShadow = (currentBeat === 1) 
-                ? '0 0 15px rgba(255, 0, 0, 0.8)' // 1拍目は赤く輝く
-                : '0 0 10px rgba(0, 255, 0, 0.5)'; // 他は緑
+            // 拍の瞬間にバーにわずかな光沢を与える
+            const isAccent = (currentBeat === 1);
+            progressBar.style.boxShadow = isAccent 
+                ? '0 0 15px rgba(255, 0, 0, 0.6)' 
+                : '0 0 10px rgba(0, 255, 0, 0.3)';
 
             setTimeout(() => {
-                progressBar.style.boxShadow = '0 0 5px rgba(0, 255, 0, 0.2)';
-            }, 50);
+                progressBar.style.boxShadow = 'none';
+            }, 70);
         }
 
+        // バーの進捗更新
         progressBar.style.width = progress + '%';
-        // バーの色：1拍目は暗い赤、それ以外は暗い緑
-        progressBar.style.backgroundColor = (currentBeat === 1) ? '#8b0000' : '#006400';
+        
+        // 色の更新
+        const isAccentBeat = (currentBeat === 1);
+        progressBar.style.backgroundColor = isAccentBeat ? '#8b0000' : '#004d00';
 
         animationId = requestAnimationFrame(animate);
     }
 
+    function updateBPM(val) {
+        bpm = val;
+        bpmSlider.value = val;
+        bpmBackground.innerText = val;
+        tempoName.innerText = getTempoLabel(val);
+    }
+
     bpmSlider.addEventListener('input', (e) => {
-        bpm = e.target.value;
-        bpmBackground.innerText = bpm;
+        updateBPM(e.target.value);
     });
 
     tempoPreset.addEventListener('change', (e) => {
-        bpm = e.target.value;
-        bpmSlider.value = bpm;
-        bpmBackground.innerText = bpm;
+        updateBPM(e.target.value);
     });
 
     startStopBtn.addEventListener('click', () => {
@@ -152,7 +238,7 @@
             cancelAnimationFrame(animationId);
             startStopBtn.innerText = 'START';
             startStopBtn.classList.remove('stop');
-            controlPanel.classList.remove('playing'); // コントロールを表示
+            controlPanel.classList.remove('playing');
             progressBar.style.width = '0%';
             currentBeat = 0;
         } else {
@@ -161,11 +247,21 @@
             animationId = requestAnimationFrame(animate);
             startStopBtn.innerText = 'STOP';
             startStopBtn.classList.add('stop');
-            controlPanel.classList.add('playing'); // コントロールを隠す
+            controlPanel.classList.add('playing');
         }
         isPlaying = !isPlaying;
     });
-</script>
 
+    // 画面タップでコントロールを一時的に見やすくする（スマホ対応）
+    document.body.addEventListener('click', (e) => {
+        if (isPlaying && e.target === document.body) {
+            controlPanel.style.opacity = '1';
+            setTimeout(() => {
+                if(isPlaying) controlPanel.style.opacity = '0.03';
+            }, 3000);
+        }
+    });
+
+</script>
 </body>
 </html>
