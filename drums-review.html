@@ -11,27 +11,32 @@
         .input-field { background-color: #2a2a2a; border: 1px solid #444; color: white; }
         .input-field:focus { border-color: #3b82f6; outline: none; }
         .label-text { font-size: 0.75rem; font-weight: bold; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem; display: block; }
+        
+        /* 3段階評価用のボタンスタイル */
+        .rating-group { display: flex; gap: 0.5rem; }
+        .rating-btn { flex: 1; padding: 0.6rem; border-radius: 0.75rem; font-size: 0.7rem; font-weight: bold; border: 1px solid #334155; background: #1e293b; color: #64748b; transition: 0.2s; }
+        
+        .rating-btn.active-bad { background: #451a1a; color: #f87171; border-color: #f87171; }
+        .rating-btn.active-good { background: #1e3a8a; color: #60a5fa; border-color: #60a5fa; }
+        .rating-btn.active-ex { background: #064e3b; color: #34d399; border-color: #34d399; }
+        
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-        /* 数字入力の矢印を消す（スッキリさせるため） */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="p-4 md:p-8 pb-20">
     <div class="max-w-md mx-auto">
         <header class="text-center mb-6">
             <h1 class="text-2xl font-black text-blue-400">Drum Hybrid Review</h1>
-            <p class="text-xs text-slate-400 tracking-widest">2026 SPRING ROUTINE</p>
+            <p class="text-xs text-slate-400 tracking-widest uppercase">3-Step Evaluation System</p>
         </header>
 
         <div class="card p-6 space-y-5 shadow-2xl">
-            <!-- 日付選択 -->
             <section>
                 <label class="label-text">Date</label>
                 <input type="date" id="practice-date" class="w-full p-3 input-field rounded-xl text-sm" onchange="updateMenuByDate()">
             </section>
 
-            <!-- 1. 本日のメニュー選択 -->
             <section>
                 <label class="label-text">1. 練習メニュー</label>
                 <select id="todo-select" class="w-full p-4 input-field rounded-xl text-sm leading-relaxed" onchange="updateBpmPlaceholder()">
@@ -40,153 +45,134 @@
                     <option value="水：7A [高速] Ritual + StickControl">水曜：7A/脱力高速 (Ritual+SC 高速)</option>
                     <option value="木：5A [ダイナミクス] CrazyArmy + Syncopation">木曜：5A/消音アクセント (Crazy+Synco)</option>
                     <option value="金：5A [持久力] Ritual + Syncopation">金曜：5A/通し完走 (Ritual+Synco)</option>
-                    <option value="土：5A/7A [統合] Syncopation 応用">土曜：録音・応用/セット (Dream Theater的キメ)</option>
+                    <option value="土：5A/7A [統合] Syncopation 応用">土曜：録音・応用/セット (DT的キメ)</option>
                     <option value="日：自由 [対局] Session / Chess">日曜：自由/Session & Chess</option>
                 </select>
             </section>
 
-            <!-- BPM メモ (数字入力モード) -->
             <section class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="label-text">BPM (Main)</label>
-                    <input type="number" 
-                           inputmode="numeric" 
-                           id="bpm-main" 
-                           class="w-full p-3 input-field rounded-xl text-sm" 
-                           placeholder="Ritual等">
+                    <input type="number" inputmode="numeric" id="bpm-main" class="w-full p-3 input-field rounded-xl text-sm" placeholder="Ritual等">
                 </div>
                 <div>
                     <label class="label-text">BPM (Sub)</label>
-                    <input type="number" 
-                           inputmode="numeric" 
-                           id="bpm-sub" 
-                           class="w-full p-3 input-field rounded-xl text-sm" 
-                           placeholder="SC/Synco等">
+                    <input type="number" inputmode="numeric" id="bpm-sub" class="w-full p-3 input-field rounded-xl text-sm" placeholder="SC/Synco等">
                 </div>
             </section>
 
-            <!-- 2. チェックポイント -->
-            <section class="grid grid-cols-2 gap-3">
-                <div class="col-span-2">
-                    <label class="label-text">2. チェックポイント</label>
+            <section class="space-y-4 pt-2">
+                <div>
+                    <label class="label-text">2-A. シンクロ率 (声・足・手)</label>
+                    <div class="rating-group" id="rating-sync">
+                        <button onclick="setRating('sync', 'Bad')" class="rating-btn">Bad</button>
+                        <button onclick="setRating('sync', 'Good')" class="rating-btn">Good</button>
+                        <button onclick="setRating('sync', 'Excellent')" class="rating-btn">Ex</button>
+                    </div>
                 </div>
-                <label class="flex items-center space-x-2 p-3 bg-slate-800 rounded-xl cursor-pointer">
-                    <input type="checkbox" id="check-sync" class="w-5 h-5 accent-blue-500">
-                    <span class="text-xs text-slate-300 font-medium">声・足の独立性</span>
-                </label>
-                <label class="flex items-center space-x-2 p-3 bg-slate-800 rounded-xl cursor-pointer">
-                    <input type="checkbox" id="check-relax" class="w-5 h-5 accent-blue-500">
-                    <span class="text-xs text-slate-300 font-medium">脱力・ダイナミクス</span>
-                </label>
+                <div>
+                    <label class="label-text">2-B. 脱力・ダイナミクス</label>
+                    <div class="rating-group" id="rating-relax">
+                        <button onclick="setRating('relax', 'Bad')" class="rating-btn">Bad</button>
+                        <button onclick="setRating('relax', 'Good')" class="rating-btn">Good</button>
+                        <button onclick="setRating('relax', 'Excellent')" class="rating-btn">Ex</button>
+                    </div>
+                </div>
             </section>
 
-            <!-- 3. チェス的「分析」 -->
             <section class="space-y-4">
-                <label class="label-text">3. チェス的分析 (プロセス・レビュー)</label>
+                <label class="label-text text-blue-300">3. チェス的分析</label>
                 <div>
-                    <span class="text-[10px] text-green-400 font-bold uppercase tracking-wider">★ 今日の好手 (Best Move)</span>
-                    <textarea id="best-move" class="w-full mt-1 p-3 input-field rounded-xl text-sm h-20" placeholder="例: 低速BPM60で足が釣られなかった"></textarea>
+                    <span class="text-[10px] text-green-400 font-bold uppercase">★ 今日の好手 (Best Move)</span>
+                    <textarea id="best-move" class="w-full mt-1 p-3 input-field rounded-xl text-sm h-20" placeholder="例: BPM60で集中が途切れなかった"></textarea>
                 </div>
                 <div>
-                    <span class="text-[10px] text-red-400 font-bold uppercase tracking-wider">▲ 疑問手 (Inaccuracy)</span>
-                    <textarea id="bad-move" class="w-full mt-1 p-3 input-field rounded-xl text-sm h-20" placeholder="例: 左手のパラディドルが走った"></textarea>
+                    <span class="text-[10px] text-red-400 font-bold uppercase">▲ 疑問手 (Inaccuracy)</span>
+                    <textarea id="bad-move" class="w-full mt-1 p-3 input-field rounded-xl text-sm h-20" placeholder="例: 左手のダブルが不明瞭になった"></textarea>
                 </div>
             </section>
 
-            <!-- 4. 自分への褒めポイント -->
             <section>
-                <label class="label-text">4. 今日の「自分への褒めポイント」</label>
-                <textarea id="praise" class="w-full p-3 input-field rounded-xl text-sm h-20" placeholder="取り組んだ姿勢や新たな気づき"></textarea>
+                <label class="label-text">4. 自分への褒めポイント</label>
+                <textarea id="praise" class="w-full p-3 input-field rounded-xl text-sm h-20" placeholder="継続した自分を称える"></textarea>
             </section>
 
-            <!-- アクション -->
-            <button onclick="copyReview()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold text-lg shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95">
-                <span>📋 記録をコピーする</span>
+            <button onclick="copyReview()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold text-lg shadow-xl active:scale-95 transition-all">
+                📋 記録をコピーする
             </button>
         </div>
 
-        <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-opacity pointer-events-none shadow-2xl z-50">
+        <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-opacity pointer-events-none shadow-2xl">
             コピー完了！
         </div>
-
-        <footer class="mt-8 text-center text-[10px] text-slate-500 tracking-widest uppercase">
-            Independence & Dynamics Mastery
-        </footer>
     </div>
 
     <script>
+        let ratings = { sync: 'Good', relax: 'Good' };
         const bpmGuides = [
-            { main: "100", sub: "60-80" },   // 月
-            { main: "60-80", sub: "70-80" }, // 火
-            { main: "140", sub: "140" },     // 水
-            { main: "70-80", sub: "70-80" }, // 木
-            { main: "120", sub: "70-80" },   // 金
-            { main: "70-80", sub: "70-80" }, // 土
-            { main: "-", sub: "-" }          // 日
+            { main: "100", sub: "60-80" }, { main: "60-80", sub: "70-80" }, 
+            { main: "140", sub: "140" }, { main: "70-80", sub: "70-80" }, 
+            { main: "120", sub: "70-80" }, { main: "70-80", sub: "70-80" }, { main: "-", sub: "-" }
         ];
 
         window.onload = function() {
             const today = new Date();
             const dateInput = document.getElementById('practice-date');
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            dateInput.value = `${year}-${month}-${day}`;
-            
+            dateInput.value = today.toISOString().split('T')[0];
             updateMenuByDate();
+            // 初期状態をGoodに設定
+            setRating('sync', 'Good');
+            setRating('relax', 'Good');
         };
 
+        function setRating(type, value) {
+            ratings[type] = value;
+            const container = document.getElementById('rating-' + type);
+            const btns = container.querySelectorAll('.rating-btn');
+            btns.forEach(btn => {
+                btn.className = 'rating-btn';
+                if (btn.innerText === (value === 'Excellent' ? 'Ex' : value)) {
+                    btn.classList.add(value === 'Bad' ? 'active-bad' : (value === 'Good' ? 'active-good' : 'active-ex'));
+                }
+            });
+        }
+
         function updateMenuByDate() {
-            const dateVal = document.getElementById('practice-date').value;
-            if (!dateVal) return;
-            const selectedDate = new Date(dateVal);
+            const selectedDate = new Date(document.getElementById('practice-date').value);
             const dayIndex = selectedDate.getDay(); 
-            const select = document.getElementById('todo-select');
-            select.selectedIndex = (dayIndex === 0) ? 6 : dayIndex - 1;
+            document.getElementById('todo-select').selectedIndex = (dayIndex === 0) ? 6 : dayIndex - 1;
             updateBpmPlaceholder();
         }
 
         function updateBpmPlaceholder() {
-            const select = document.getElementById('todo-select');
-            const idx = select.selectedIndex;
+            const idx = document.getElementById('todo-select').selectedIndex;
             document.getElementById('bpm-main').placeholder = `目安: ${bpmGuides[idx].main}`;
             document.getElementById('bpm-sub').placeholder = `目安: ${bpmGuides[idx].sub}`;
         }
 
         function copyReview() {
             const dateVal = document.getElementById('practice-date').value;
-            const dateObj = new Date(dateVal);
-            const dateFormatted = dateObj.toLocaleDateString('ja-JP', { weekday: 'short', month: '2-digit', day: '2-digit' });
-
+            const dateFormatted = new Date(dateVal).toLocaleDateString('ja-JP', { weekday: 'short', month: '2-digit', day: '2-digit' });
             const todo = document.getElementById('todo-select').value;
             const bpmMain = document.getElementById('bpm-main').value || "未入力";
             const bpmSub = document.getElementById('bpm-sub').value || "未入力";
-            const sync = document.getElementById('check-sync').checked ? "✅達成" : "未達";
-            const relax = document.getElementById('check-relax').checked ? "✅良好" : "硬め";
-            const best = document.getElementById('best-move').value || "特になし";
-            const bad = document.getElementById('bad-move').value || "特になし";
-            const praise = document.getElementById('praise').value || "なし";
-
+            
             const text = `【Drum Practice】${dateFormatted}\n` +
                          `━━━━━━━━━━━━━━━\n` +
                          `■ Menu: ${todo}\n` +
                          `■ BPM : Main[${bpmMain}] Sub[${bpmSub}]\n` +
-                         `■ Check: シンクロ[${sync}] 脱力[${relax}]\n\n` +
-                         `■ 今日の好手 (Best Move):\n   ${best}\n\n` +
-                         `■ 疑問手 (Inaccuracy):\n   ${bad}\n\n` +
-                         `■ 自分への褒めポイント:\n   ${praise}\n` +
+                         `■ Eval: シンクロ[${ratings.sync}] 脱力[${ratings.relax}]\n\n` +
+                         `■ 今日の好手 (Best Move):\n   ${document.getElementById('best-move').value || "特になし"}\n\n` +
+                         `■ 疑問手 (Inaccuracy):\n   ${document.getElementById('bad-move').value || "特になし"}\n\n` +
+                         `■ 自分への褒めポイント:\n   ${document.getElementById('praise').value || "なし"}\n` +
                          `━━━━━━━━━━━━━━━`;
 
-            const ta = document.createElement("textarea");
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
+            const ta = document.createElement("textarea"); ta.value = text;
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy');
             document.body.removeChild(ta);
 
             const toast = document.getElementById('toast');
-            toast.style.opacity = '1';
-            setTimeout(() => toast.style.opacity = '0', 2000);
+            toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000);
         }
     </script>
 </body>
