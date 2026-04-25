@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stealth Drummer Metronome Final</title>
+    <title>Stealth Drummer Metronome Pro</title>
     <style>
         :root {
             --bg-color: #000000;
             --accent-color: #ff3b30;
             --normal-color: #4cd964;
-            --text-stealth: #333333; /* 視認性と隠密性を両立したグレー */
-            --ui-bg: rgba(20, 20, 20, 0.98);
+            --text-stealth: #333333;
+            --ui-bg: rgba(30, 30, 30, 0.95);
         }
 
         body {
@@ -29,10 +29,10 @@
         /* 画面上部のプログレスバー */
         .progress-container {
             width: 100%;
-            height: 14px;
+            height: 12px;
             background: #111;
             position: fixed;
-            top: 44px; /* iPhoneのステータスバー回避 */
+            top: 44px;
             left: 0;
             z-index: 100;
         }
@@ -43,46 +43,44 @@
             background-color: var(--normal-color);
         }
 
-        /* メ覚エリア：BPMと拍数 */
+        /* メイン表示エリア */
         .display-area {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding-bottom: 20px;
+            padding-top: 60px;
         }
 
         .bpm-display {
-            font-size: 48vw; /* 最大限大きく */
+            font-size: 40vw;
             font-weight: 800;
             color: var(--text-stealth);
-            line-height: 1;
-            margin-top: 40px;
+            line-height: 0.9;
         }
 
         .beat-display {
-            font-size: 15vw; /* 拍数も大きく */
+            font-size: 15vw;
             font-weight: 700;
             color: var(--text-stealth);
             margin-top: 10px;
             font-variant-numeric: tabular-nums;
         }
 
-        /* 下部操作エリア */
+        /* 操作パネル（中央寄せ） */
         .controls-container {
             width: 100%;
-            background: var(--ui-bg);
-            padding: 20px 0 calc(30px + env(safe-area-inset-bottom));
+            padding: 20px 0 60px 0; /* 下端から少し離す */
             display: flex;
             flex-direction: column;
             align-items: center;
-            border-top: 1px solid #222;
+            z-index: 10;
         }
 
         .settings-panel {
             width: 85%;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             text-align: center;
             transition: opacity 0.3s;
         }
@@ -90,48 +88,61 @@
         .playing .settings-panel {
             opacity: 0;
             pointer-events: none;
-            height: 0;
-            margin: 0;
         }
 
-        .tempo-name {
-            font-size: 1.1rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        /* メモリーボタン */
+        .memory-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .mem-btn {
+            flex: 1;
+            margin: 0 5px;
+            padding: 10px 0;
+            background: #222;
+            border: 1px solid #444;
+            color: #888;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .mem-btn.active {
+            border-color: #0a84ff;
+            color: #0a84ff;
         }
 
         input[type="range"] {
             width: 100%;
             height: 45px;
-            margin: 15px 0;
+            margin: 10px 0;
             accent-color: #0a84ff;
         }
 
         /* 巨大ボタン */
         .action-btn {
             width: 88%;
-            height: 90px;
+            height: 80px;
             border-radius: 20px;
             border: none;
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: 800;
             cursor: pointer;
-            transition: transform 0.1s, background-color 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        .btn-start {
-            background-color: #30d158;
-            color: white;
-        }
+        .btn-start { background-color: #30d158; color: white; }
+        .btn-stop { background-color: #ff453a; color: white; }
 
-        .btn-stop {
-            background-color: #ff453a;
-            color: white;
-        }
+        .action-btn:active { transform: scale(0.96); }
 
-        .action-btn:active {
-            transform: scale(0.95);
+        .hint-text {
+            color: #444;
+            font-size: 0.7rem;
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -148,11 +159,17 @@
 
     <div class="controls-container" id="controlPanel">
         <div class="settings-panel" id="settingsPanel">
-            <div class="tempo-name" id="tempoName">Allegro</div>
+            <div class="memory-row">
+                <button class="mem-btn" onclick="handleMemory(0)">M1</button>
+                <button class="mem-btn" onclick="handleMemory(1)">M2</button>
+                <button class="mem-btn" onclick="handleMemory(2)">M3</button>
+            </div>
             <input type="range" id="bpmSlider" min="40" max="250" value="120">
+            <div style="color: #666; font-size: 0.8rem; letter-spacing: 1px;" id="tempoName">Allegro</div>
         </div>
         
         <button id="mainBtn" class="action-btn btn-start">START</button>
+        <div class="hint-text">Memory: Long press to save BPM</div>
     </div>
 
 <script>
@@ -162,6 +179,9 @@
     const beatsPerMeasure = 4;
     let animationId = null;
     let startTime = null;
+    
+    // メモリーデータ
+    let memories = [80, 120, 160];
 
     const progressBar = document.getElementById('progress-bar');
     const bpmSlider = document.getElementById('bpmSlider');
@@ -170,50 +190,86 @@
     const mainBtn = document.getElementById('mainBtn');
     const tempoName = document.getElementById('tempoName');
     const controlPanel = document.getElementById('controlPanel');
+    const memBtns = document.querySelectorAll('.mem-btn');
+
+    // 初期化：ローカルストレージから読み込み
+    function init() {
+        const savedBpm = localStorage.getItem('metronome_last_bpm');
+        if (savedBpm) updateBPM(parseInt(savedBpm));
+
+        const savedMems = localStorage.getItem('metronome_memories');
+        if (savedMems) {
+            memories = JSON.parse(savedMems);
+            updateMemoryLabels();
+        }
+    }
 
     function getTempoLabel(val) {
-        if (val < 60) return "Grave / Largo";
+        if (val < 60) return "Largo";
         if (val < 76) return "Adagio";
         if (val < 108) return "Andante";
         if (val < 120) return "Moderato";
         if (val < 156) return "Allegro";
-        if (val < 200) return "Presto";
-        return "Prestissimo";
+        return "Presto";
     }
+
+    function updateBPM(val) {
+        bpm = val;
+        bpmSlider.value = val;
+        bpmLabel.innerText = val;
+        tempoName.innerText = getTempoLabel(val);
+        localStorage.setItem('metronome_last_bpm', val);
+    }
+
+    function updateMemoryLabels() {
+        memBtns.forEach((btn, i) => {
+            btn.innerText = `M${i+1}: ${memories[i]}`;
+        });
+    }
+
+    // メモリー操作（タップで呼び出し、長押しで保存）
+    let pressTimer;
+    function handleMemory(index) {
+        updateBPM(memories[index]);
+    }
+
+    memBtns.forEach((btn, i) => {
+        btn.addEventListener('touchstart', () => {
+            pressTimer = setTimeout(() => {
+                memories[i] = parseInt(bpm);
+                localStorage.setItem('metronome_memories', JSON.stringify(memories));
+                updateMemoryLabels();
+                // 視覚的なフィードバック
+                btn.style.backgroundColor = "#444";
+                setTimeout(() => btn.style.backgroundColor = "#222", 200);
+            }, 800);
+        });
+        btn.addEventListener('touchend', () => clearTimeout(pressTimer));
+    });
 
     function animate(timestamp) {
         if (!startTime) startTime = timestamp;
         const beatDuration = 60000 / bpm;
         const elapsed = timestamp - startTime;
-        
         let progress = (elapsed / beatDuration) * 100;
 
         if (progress >= 100) {
             currentBeat = (currentBeat % beatsPerMeasure) + 1;
             startTime = timestamp;
             progress = 0;
-            
-            // 拍数の更新
             beatLabel.innerText = currentBeat + " / " + beatsPerMeasure;
             
-            // 1拍目の強調
             if (currentBeat === 1) {
-                beatLabel.style.color = "#ff3b30"; // 一瞬だけ赤く
+                beatLabel.style.color = "#ff3b30";
                 setTimeout(() => { if(isPlaying) beatLabel.style.color = "var(--text-stealth)"; }, 150);
             }
         }
-
         progressBar.style.width = progress + '%';
         progressBar.style.backgroundColor = (currentBeat === 1) ? 'var(--accent-color)' : 'var(--normal-color)';
-
         animationId = requestAnimationFrame(animate);
     }
 
-    bpmSlider.addEventListener('input', (e) => {
-        bpm = e.target.value;
-        bpmLabel.innerText = bpm;
-        tempoName.innerText = getTempoLabel(bpm);
-    });
+    bpmSlider.addEventListener('input', (e) => updateBPM(e.target.value));
 
     mainBtn.addEventListener('click', () => {
         if (isPlaying) {
@@ -223,7 +279,6 @@
             controlPanel.classList.remove('playing');
             progressBar.style.width = '0%';
             beatLabel.innerText = "1 / 4";
-            beatLabel.style.color = "var(--text-stealth)";
             currentBeat = 0;
         } else {
             startTime = null;
@@ -236,10 +291,7 @@
         isPlaying = !isPlaying;
     });
 
-    // 誤操作防止
-    document.addEventListener('touchmove', (e) => {
-        if (isPlaying) e.preventDefault();
-    }, { passive: false });
+    init();
 </script>
 </body>
 </html>
