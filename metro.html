@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stealth Drummer Metronome</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace; /* 無機質なフォント */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000000; /* 完全な黒 */
+            color: #333; /* 初期状態は暗いグレー */
+            overflow: hidden;
+            transition: color 0.5s;
+        }
+
+        /* 超極細プログレスバー（画面最上部） */
+        .progress-container {
+            width: 100%;
+            height: 4px; /* 極細 */
+            background: #111; /* ほぼ黒 */
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #006400; /* 暗い緑 (DarkGreen) */
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.2); /* わずかな発光 */
+        }
+
+        /* 巨大BPM表示（ステルス） */
+        .bpm-display {
+            font-size: 15vw; /* 画面幅に合わせた巨大さ */
+            font-weight: 900;
+            position: absolute;
+            z-index: -1; /* コントロールの裏へ */
+            letter-spacing: -10px;
+            color: #1a1a1a; /* ほぼ見えないグレー */
+        }
+
+        /* 演奏開始時にコントロールを隠すクラス */
+        .controls.playing {
+            opacity: 0.05; /* ほぼ透明 */
+            pointer-events: none; /* クリック不可 */
+            transition: opacity 1s;
+        }
+
+        .controls {
+            background: rgba(10, 10, 10, 0.8);
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #222;
+            transition: opacity 0.5s;
+        }
+
+        input[type="range"] { width: 250px; accent-color: #333; }
+        select, button {
+            padding: 10px 20px; border-radius: 5px; border: 1px solid #333;
+            background-color: #111; color: #888; cursor: pointer;
+        }
+        button#startStopBtn { background-color: #222; color: #fff; font-weight: bold; border: 1px solid #444;}
+        button#startStopBtn.stop { background-color: #8b0000; color: #fff; border: 1px solid #ff0000;} /* 暗い赤 */
+    </style>
+</head>
+<body>
+
+<div class="bpm-display"><span id="bpmBackground">120</span></div>
+
+<div class="progress-container">
+    <div id="progress-bar"></div>
+</div>
+
+<div class="controls" id="controlPanel">
+    <input type="range" id="bpmSlider" min="40" max="250" value="120">
+    <br>
+    <select id="tempoPreset">
+        <option value="80">Andante (80)</option>
+        <option value="120" selected>Allegro (120)</option>
+        <option value="160">Presto (160)</option>
+    </select>
+    <br><br>
+    <button id="startStopBtn">START</button>
+</div>
+
+<script>
+    let bpm = 120;
+    let isPlaying = false;
+    let currentBeat = 0;
+    const beatsPerMeasure = 4;
+    let animationId = null;
+    let startTime = null;
+
+    const progressBar = document.getElementById('progress-bar');
+    const bpmSlider = document.getElementById('bpmSlider');
+    const bpmBackground = document.getElementById('bpmBackground');
+    const startStopBtn = document.getElementById('startStopBtn');
+    const tempoPreset = document.getElementById('tempoPreset');
+    const controlPanel = document.getElementById('controlPanel');
+
+    function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const beatDuration = 60000 / bpm;
+        const elapsed = timestamp - startTime;
+        
+        let progress = (elapsed / beatDuration) * 100;
+
+        if (progress >= 100) {
+            // 拍の切り替わり
+            currentBeat = (currentBeat % beatsPerMeasure) + 1;
+            startTime = timestamp;
+            progress = 0;
+            
+            // 拍の瞬間にバーを一瞬明るくする（フラッシュの代わり）
+            progressBar.style.boxShadow = (currentBeat === 1) 
+                ? '0 0 15px rgba(255, 0, 0, 0.8)' // 1拍目は赤く輝く
+                : '0 0 10px rgba(0, 255, 0, 0.5)'; // 他は緑
+
+            setTimeout(() => {
+                progressBar.style.boxShadow = '0 0 5px rgba(0, 255, 0, 0.2)';
+            }, 50);
+        }
+
+        progressBar.style.width = progress + '%';
+        // バーの色：1拍目は暗い赤、それ以外は暗い緑
+        progressBar.style.backgroundColor = (currentBeat === 1) ? '#8b0000' : '#006400';
+
+        animationId = requestAnimationFrame(animate);
+    }
+
+    bpmSlider.addEventListener('input', (e) => {
+        bpm = e.target.value;
+        bpmBackground.innerText = bpm;
+    });
+
+    tempoPreset.addEventListener('change', (e) => {
+        bpm = e.target.value;
+        bpmSlider.value = bpm;
+        bpmBackground.innerText = bpm;
+    });
+
+    startStopBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            cancelAnimationFrame(animationId);
+            startStopBtn.innerText = 'START';
+            startStopBtn.classList.remove('stop');
+            controlPanel.classList.remove('playing'); // コントロールを表示
+            progressBar.style.width = '0%';
+            currentBeat = 0;
+        } else {
+            startTime = null;
+            currentBeat = 0;
+            animationId = requestAnimationFrame(animate);
+            startStopBtn.innerText = 'STOP';
+            startStopBtn.classList.add('stop');
+            controlPanel.classList.add('playing'); // コントロールを隠す
+        }
+        isPlaying = !isPlaying;
+    });
+</script>
+
+</body>
+</html>
