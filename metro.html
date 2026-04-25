@@ -2,94 +2,156 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stealth Drummer Metronome</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stealth Drummer Metronome v2</title>
     <style>
+        :root {
+            --bg-color: #000000;
+            --accent-color: #ff3b30; /* 1拍目：iOSらしい鮮やかな赤 */
+            --normal-color: #4cd964; /* 2-4拍目：iOSらしい鮮やかな緑 */
+            --text-main: #333333;    /* 数字：視認性を上げたグレー */
+            --ui-bg: rgba(28, 28, 30, 0.95);
+        }
+
         body {
-            font-family: 'Courier New', Courier, monospace; /* 無機質なフォント */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            margin: 0;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #000000; /* 完全な黒 */
-            color: #333; /* 初期状態は暗いグレー */
+            justify-content: space-between;
             overflow: hidden;
-            transition: color 0.5s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* 超極細プログレスバー（画面最上部） */
+        /* プログレスバー：iPhoneのノッチを避ける位置 */
         .progress-container {
             width: 100%;
-            height: 4px; /* 極細 */
-            background: #111; /* ほぼ黒 */
+            height: 12px;
+            background: #1c1c1e;
             position: fixed;
-            top: 0;
+            top: 40px; /* ステータスバー付近を避ける */
             left: 0;
+            z-index: 100;
         }
 
         #progress-bar {
             width: 0%;
             height: 100%;
-            background-color: #006400; /* 暗い緑 (DarkGreen) */
-            box-shadow: 0 0 5px rgba(0, 255, 0, 0.2); /* わずかな発光 */
+            background-color: var(--normal-color);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* 巨大BPM表示（ステルス） */
+        /* 巨大なBPM表示：縦画面いっぱいに */
         .bpm-display {
-            font-size: 15vw; /* 画面幅に合わせた巨大さ */
-            font-weight: 900;
             position: absolute;
-            z-index: -1; /* コントロールの裏へ */
-            letter-spacing: -10px;
-            color: #1a1a1a; /* ほぼ見えないグレー */
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 45vw; /* 縦画面で最大化 */
+            font-weight: 800;
+            color: var(--text-main);
+            z-index: 1;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* 演奏開始時にコントロールを隠すクラス */
-        .controls.playing {
-            opacity: 0.05; /* ほぼ透明 */
-            pointer-events: none; /* クリック不可 */
-            transition: opacity 1s;
+        /* 下部操作エリア */
+        .controls-wrapper {
+            width: 100%;
+            z-index: 10;
+            background: var(--ui-bg);
+            padding: 20px 0 calc(20px + env(safe-area-inset-bottom));
+            border-top: 1px solid #38383a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .controls {
-            background: rgba(10, 10, 10, 0.8);
-            padding: 2rem;
-            border-radius: 10px;
+        /* 演奏中に設定を隠す */
+        .controls-wrapper.playing .settings {
+            display: none;
+        }
+
+        .settings {
+            width: 85%;
             text-align: center;
-            border: 1px solid #222;
-            transition: opacity 0.5s;
         }
 
-        input[type="range"] { width: 250px; accent-color: #333; }
-        select, button {
-            padding: 10px 20px; border-radius: 5px; border: 1px solid #333;
-            background-color: #111; color: #888; cursor: pointer;
+        input[type="range"] {
+            width: 100%;
+            height: 40px;
+            margin: 20px 0;
+            accent-color: #0a84ff;
         }
-        button#startStopBtn { background-color: #222; color: #fff; font-weight: bold; border: 1px solid #444;}
-        button#startStopBtn.stop { background-color: #8b0000; color: #fff; border: 1px solid #ff0000;} /* 暗い赤 */
+
+        .tempo-info {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #8e8e93;
+            margin-bottom: 10px;
+        }
+
+        /* 巨大なSTOP/STARTボタン */
+        .action-btn {
+            width: 85%;
+            height: 80px;
+            border-radius: 16px;
+            border: none;
+            font-size: 1.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-start {
+            background-color: #30d158;
+            color: white;
+        }
+
+        .btn-stop {
+            background-color: #ff453a;
+            color: white;
+        }
+
+        .action-btn:active {
+            transform: scale(0.96);
+            opacity: 0.8;
+        }
+
+        /* 拍子インジケーター（簡易） */
+        .beat-indicator {
+            position: absolute;
+            top: 65%;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #444;
+            z-index: 2;
+        }
     </style>
 </head>
 <body>
 
-<div class="bpm-display"><span id="bpmBackground">120</span></div>
+    <div class="progress-container">
+        <div id="progress-bar"></div>
+    </div>
 
-<div class="progress-container">
-    <div id="progress-bar"></div>
-</div>
+    <div class="bpm-display" id="bpmLabel">120</div>
+    <div class="beat-indicator" id="beatNumber">1 / 4</div>
 
-<div class="controls" id="controlPanel">
-    <input type="range" id="bpmSlider" min="40" max="250" value="120">
-    <br>
-    <select id="tempoPreset">
-        <option value="80">Andante (80)</option>
-        <option value="120" selected>Allegro (120)</option>
-        <option value="160">Presto (160)</option>
-    </select>
-    <br><br>
-    <button id="startStopBtn">START</button>
-</div>
+    <div class="controls-wrapper" id="uiWrapper">
+        <div class="settings">
+            <div class="tempo-info" id="tempoName">Allegro</div>
+            <input type="range" id="bpmSlider" min="40" max="250" value="120">
+        </div>
+        
+        <button id="mainBtn" class="action-btn btn-start">START</button>
+    </div>
 
 <script>
     let bpm = 120;
@@ -101,10 +163,21 @@
 
     const progressBar = document.getElementById('progress-bar');
     const bpmSlider = document.getElementById('bpmSlider');
-    const bpmBackground = document.getElementById('bpmBackground');
-    const startStopBtn = document.getElementById('startStopBtn');
-    const tempoPreset = document.getElementById('tempoPreset');
-    const controlPanel = document.getElementById('controlPanel');
+    const bpmLabel = document.getElementById('bpmLabel');
+    const mainBtn = document.getElementById('mainBtn');
+    const tempoName = document.getElementById('tempoName');
+    const uiWrapper = document.getElementById('uiWrapper');
+    const beatNumber = document.getElementById('beatNumber');
+
+    function getTempoLabel(val) {
+        if (val < 60) return "Grave / Largo";
+        if (val < 76) return "Adagio";
+        if (val < 108) return "Andante";
+        if (val < 120) return "Moderato";
+        if (val < 156) return "Allegro";
+        if (val < 200) return "Presto";
+        return "Prestissimo";
+    }
 
     function animate(timestamp) {
         if (!startTime) startTime = timestamp;
@@ -114,58 +187,56 @@
         let progress = (elapsed / beatDuration) * 100;
 
         if (progress >= 100) {
-            // 拍の切り替わり
             currentBeat = (currentBeat % beatsPerMeasure) + 1;
             startTime = timestamp;
             progress = 0;
             
-            // 拍の瞬間にバーを一瞬明るくする（フラッシュの代わり）
-            progressBar.style.boxShadow = (currentBeat === 1) 
-                ? '0 0 15px rgba(255, 0, 0, 0.8)' // 1拍目は赤く輝く
-                : '0 0 10px rgba(0, 255, 0, 0.5)'; // 他は緑
-
-            setTimeout(() => {
-                progressBar.style.boxShadow = '0 0 5px rgba(0, 255, 0, 0.2)';
-            }, 50);
+            // 視覚的強調（ノッチ付近のバー）
+            const isAccent = (currentBeat === 1);
+            beatNumber.innerText = currentBeat + " / " + beatsPerMeasure;
+            beatNumber.style.color = isAccent ? '#ff3b30' : '#4cd964';
         }
 
         progressBar.style.width = progress + '%';
-        // バーの色：1拍目は暗い赤、それ以外は暗い緑
-        progressBar.style.backgroundColor = (currentBeat === 1) ? '#8b0000' : '#006400';
+        const isAccentBeat = (currentBeat === 1);
+        progressBar.style.backgroundColor = isAccentBeat ? 'var(--accent-color)' : 'var(--normal-color)';
 
         animationId = requestAnimationFrame(animate);
     }
 
     bpmSlider.addEventListener('input', (e) => {
         bpm = e.target.value;
-        bpmBackground.innerText = bpm;
+        bpmLabel.innerText = bpm;
+        tempoName.innerText = getTempoLabel(bpm);
     });
 
-    tempoPreset.addEventListener('change', (e) => {
-        bpm = e.target.value;
-        bpmSlider.value = bpm;
-        bpmBackground.innerText = bpm;
-    });
-
-    startStopBtn.addEventListener('click', () => {
+    mainBtn.addEventListener('click', () => {
         if (isPlaying) {
+            // STOP処理
             cancelAnimationFrame(animationId);
-            startStopBtn.innerText = 'START';
-            startStopBtn.classList.remove('stop');
-            controlPanel.classList.remove('playing'); // コントロールを表示
+            mainBtn.innerText = 'START';
+            mainBtn.className = 'action-btn btn-start';
+            uiWrapper.classList.remove('playing');
             progressBar.style.width = '0%';
             currentBeat = 0;
+            beatNumber.innerText = "1 / 4";
+            beatNumber.style.color = "#444";
         } else {
+            // START処理
             startTime = null;
             currentBeat = 0;
             animationId = requestAnimationFrame(animate);
-            startStopBtn.innerText = 'STOP';
-            startStopBtn.classList.add('stop');
-            controlPanel.classList.add('playing'); // コントロールを隠す
+            mainBtn.innerText = 'STOP';
+            mainBtn.className = 'action-btn btn-stop';
+            uiWrapper.classList.add('playing');
         }
         isPlaying = !isPlaying;
     });
-</script>
 
+    // iPhoneのスクロールによるズレを防止
+    document.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+</script>
 </body>
 </html>
