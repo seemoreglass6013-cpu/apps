@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Progress Log v2</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f4;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --accent: #2c3e50;
+            --border: #dddddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container { width: 100%; max-width: 500px; }
+        h1 { text-align: center; font-size: 1.5rem; color: var(--accent); margin-bottom: 20px; }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+        }
+        h2 { font-size: 1.1rem; margin-top: 0; border-bottom: 2px solid var(--accent); padding-bottom: 5px; }
+
+        label { display: block; margin: 10px 0 5px; font-weight: bold; font-size: 0.9rem; }
+        input, select, textarea {
+            width: 100%; padding: 10px; border: 1px solid var(--border);
+            border-radius: 4px; box-sizing: border-box; font-size: 1rem;
+        }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .flex-row input { flex: 1; }
+
+        button {
+            width: 100%; padding: 12px; margin-top: 10px;
+            border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-save { background-color: var(--accent); color: white; }
+        .btn-copy { background-color: #666; color: white; }
+        .btn-csv { background-color: #eee; color: #333; border: 1px solid #ccc; }
+
+        .log-item { font-size: 0.8rem; border-bottom: 1px solid #eee; padding: 5px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Chess Progress Log v2</h1>
+
+    <!-- 入力フォーム -->
+    <div class="card">
+        <h2>📝 今日の記録 (日次/対局)</h2>
+        
+        <label>種別</label>
+        <select id="type">
+            <option value="Daily">Daily (パズル/Duo)</option>
+            <option value="Game">Game (対局ログ)</option>
+        </select>
+
+        <div id="daily-fields">
+            <label>パズル成功数 (0-3)</label>
+            <input type="number" id="puzzle" min="0" max="3" value="0">
+            <label>
+                <input type="checkbox" id="duolingo" style="width: auto;"> Duolingo完了
+            </label>
+        </div>
+
+        <div id="game-fields" style="display:none;">
+            <label>正確度 (%)</label>
+            <input type="number" id="accuracy" placeholder="85.5">
+            <div class="flex-row">
+                <div><label>B</label><input type="number" id="blunder" value="0"></div>
+                <div><label>M</label><input type="number" id="mistake" value="0"></div>
+                <div><label>I</label><input type="number" id="inaccuracy" value="0"></div>
+            </div>
+            <label>納得感</label>
+            <select id="satisfaction">
+                <option value="納得">納得</option>
+                <option value="普通">普通</option>
+                <option value="納得いかない">納得いかない</option>
+            </select>
+        </div>
+
+        <label>一言メモ</label>
+        <textarea id="memo" rows="2" placeholder="ミス内容や気づき"></textarea>
+
+        <button class="btn-save" onclick="saveLog()">保存</button>
+    </div>
+
+    <!-- アクションボタン -->
+    <div class="card">
+        <h2>📊 アクション (日曜用)</h2>
+        <button class="btn-copy" onclick="copyForAI()">AI解析用テキストをコピー</button>
+        <button class="btn-csv" onclick="downloadCSV()">CSVをダウンロード</button>
+        <button class="btn-csv" onclick="clearData()" style="color: red; margin-top: 20px;">データ全消去</button>
+    </div>
+
+    <div id="history" class="card">
+        <h2>最近の履歴 (最新5件)</h2>
+        <div id="log-list"></div>
+    </div>
+</div>
+
+<script>
+    const typeSelect = document.getElementById('type');
+    const dailyFields = document.getElementById('daily-fields');
+    const gameFields = document.getElementById('game-fields');
+
+    // フィールド切り替え
+    typeSelect.addEventListener('change', () => {
+        if (typeSelect.value === 'Daily') {
+            dailyFields.style.display = 'block';
+            gameFields.style.display = 'none';
+        } else {
+            dailyFields.style.display = 'none';
+            gameFields.style.display = 'block';
+        }
+    });
+
+    // 保存機能
+    function saveLog() {
+        const logs = JSON.parse(localStorage.getItem('chessLogs') || '[]');
+        const newLog = {
+            date: new Date().toLocaleDateString(),
+            type: typeSelect.value,
+            puzzle: document.getElementById('puzzle').value,
+            duo: document.getElementById('duolingo').checked,
+            accuracy: document.getElementById('accuracy').value,
+            blunder: document.getElementById('blunder').value,
+            mistake: document.getElementById('mistake').value,
+            inaccuracy: document.getElementById('inaccuracy').value,
+            satisfaction: document.getElementById('satisfaction').value,
+            memo: document.getElementById('memo').value
+        };
+        logs.unshift(newLog);
+        localStorage.setItem('chessLogs', JSON.stringify(logs));
+        alert('保存しました！');
+        location.reload();
+    }
+
+    // 履歴表示
+    const historyDiv = document.getElementById('log-list');
+    const logs = JSON.parse(localStorage.getItem('chessLogs') || '[]');
+    logs.slice(0, 5).forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `<strong>${log.date} [${log.type}]</strong> ${log.memo}`;
+        historyDiv.appendChild(item);
+    });
+
+    // AI用コピー
+    function copyForAI() {
+        if (logs.length === 0) return alert('データがありません');
+        let text = "【週次レビュー依頼】\n今週のチェス記録です。弱点を3つ抽出してください。\n\n";
+        logs.slice(0, 10).forEach(l => {
+            text += `- ${l.date} [${l.type}] 正確度:${l.accuracy}% B:${l.blunder} M:${l.mistake} 満足度:${l.satisfaction} メモ:${l.memo}\n`;
+        });
+        navigator.clipboard.writeText(text);
+        alert('AI用テキストをコピーしました！');
+    }
+
+    // CSVダウンロード
+    function downloadCSV() {
+        let csv = "Date,Type,Puzzle,Duo,Accuracy,Blunder,Mistake,Inaccuracy,Satisfaction,Memo\n";
+        logs.forEach(l => {
+            csv += `${l.date},${l.type},${l.puzzle},${l.duo},${l.accuracy},${l.blunder},${l.mistake},${l.inaccuracy},${l.satisfaction},${l.memo}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "chess_log.csv";
+        link.click();
+    }
+
+    function clearData() {
+        if(confirm('全てのデータを消去しますか？')) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>
