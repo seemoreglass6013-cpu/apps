@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水分補給ロガー（応援メッセージ付）</title>
+    <title>水分補給ロガー（全角対応版）</title>
     <style>
         :root {
             --primary-color: #3498db;
@@ -41,7 +41,6 @@
         }
         .target { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 5px; }
         
-        /* メッセージ表示エリア（少し縦幅を広げました） */
         .navi-message {
             font-size: 1rem;
             font-weight: bold;
@@ -95,15 +94,16 @@
             justify-content: center;
             margin-bottom: 15px;
         }
-        input[type="number"] {
-            width: 70px;
+        /* inputのtypeをtelに変更してスマホで数字キーボードが出やすくしつつ、スタイル調整 */
+        input[type="tel"] {
+            width: 80px;
             padding: 8px;
             border: 1px solid #bdc3c7;
             border-radius: 8px;
             font-size: 0.9rem;
             text-align: center;
         }
-        .btn-add { background-color: var(--primary-color); color: white; padding: 8px 15px; border-radius: 8px; }
+        .btn-add { background-color: var(--primary-color); color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; }
 
         .calendar-section { margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px; }
         .calendar-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; color: #34495e; }
@@ -139,7 +139,7 @@
     </div>
 
     <div class="custom-input">
-        <input type="number" id="customAmount" placeholder="300" min="0">
+        <input type="tel" id="customAmount" placeholder="300">
         <button class="btn-add" onclick="addCustomWater()">追加</button>
     </div>
 
@@ -172,19 +172,15 @@
         const remaining = TARGET - amount;
         const naviEl = document.getElementById('naviMessage');
         
-        // 過去のポップアップ発火フラグを取得
         const todayStr = getTodayString();
         const hasAlerted = localStorage.getItem(`alerted_${todayStr}`) === 'true';
         
-        // メッセージと応援コメントの分岐
         if (remaining <= 0) {
             naviEl.innerHTML = "🎉 2,000ml達成！ナイスハイドレーション！<br><span style='font-size:0.8rem; font-weight:normal;'>尿酸も塩分もドバドバ流れてます！肝臓・腎臓大喜び！</span>";
             naviEl.style.color = "var(--success-color)";
             
-            // 今日まだお祝いポップアップを出していなければ、出す！
             if (!hasAlerted) {
                 localStorage.setItem(`alerted_${todayStr}`, 'true');
-                // 少しだけ時間差をつけて達成感を演出
                 setTimeout(() => {
                     alert("✨ 2,000ml 達成！！ ✨\n素晴らしい自己管理能力です！\n9月の健康診断ハイスコアに向けて、内臓のデトックスはバッチリです！この調子でいきましょう！");
                 }, 300);
@@ -223,12 +219,23 @@
         updateUI();
     }
 
+    // 全角数字を半角数字に変換する関数
+    function zenkakuToHankaku(str) {
+        return str.replace(/[０-９]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        });
+    }
+
     function addCustomWater() {
         const input = document.getElementById('customAmount');
-        const value = parseInt(input.value);
+        // 入力された文字を半角に変換し、数字以外を除去
+        const cleanedValue = zenkakuToHankaku(input.value).replace(/[^0-9]/g, '');
+        const value = parseInt(cleanedValue);
+        
         if (value > 0) {
             addWater(value);
             input.value = '';
+            input.blur(); // 入力確定後にキーボードを閉じる（スマホ対策）
         }
     }
 
@@ -236,7 +243,7 @@
         if (confirm('今日の記録をゼロにリセットしますか？')) {
             const todayStr = getTodayString();
             localStorage.setItem(`water_${todayStr}`, 0);
-            localStorage.removeItem(`alerted_${todayStr}`); // ポップアップフラグもリセット
+            localStorage.removeItem(`alerted_${todayStr}`);
             updateUI();
         }
     }
@@ -288,7 +295,7 @@
         }
     }
 
-    // Enterキーの誤送信防止
+    // Enterキーの誤送信防止＆確定処理
     document.getElementById('customAmount').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
             event.preventDefault();
