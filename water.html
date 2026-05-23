@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水分補給ロガー（全角対応版）</title>
+    <title>水分補給ロガー</title>
     <style>
         :root {
             --primary-color: #3498db;
@@ -29,12 +29,291 @@
             border-radius: 16px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             text-align: center;
+            box-sizing: border-box;
         }
-        h1 { font-size: 1.4rem; margin-bottom: 5px; }
-        .date { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 20px; }
+        h1 { font-size: 1.4rem; margin-top: 0; margin-bottom: 5px; }
+        .date { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 20px; min-height: 20px; }
         
         .amount-display {
             font-size: 2.3rem;
+            font-weight: bold;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        .target { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 5px; }
+        
+        .navi-message {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #e67e22;
+            min-height: 48px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            line-height: 1.4;
+        }
+
+        .progress-container {
+            position: relative;
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #3498db;
+            transition: width 0.4s ease;
+        }
+
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            border: none;
+            background-color: #ebf5fb;
+            color: #3498db;
+            padding: 12px 5px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:active { transform: scale(0.95); }
+
+        .custom-input {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        input[type="tel"] {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .btn-add { background-color: #3498db; color: white; padding: 8px 15px; border-radius: 8px; font-weight: bold; }
+
+        .calendar-section { margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px; }
+        .calendar-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; color: #34495e; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-day-header { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; padding: 5px 0; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border-radius: 6px; background-color: #f8f9fa; cursor: pointer; font-weight: 500; }
+        
+        .day-achieved { background-color: #d4edda !important; color: #155724; font-weight: bold; }
+        .day-recorded { background-color: #d1ecf1 !important; color: #0c5460; }
+        
+        .btn-reset { background-color: #e74c3c; color: white; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; margin-top: 20px; opacity: 0.6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>💧 水分補給ログ</h1>
+    <div class="date" id="currentDate">----年--月--日</div>
+
+    <div class="amount-display" id="amountDisplay"><span id="currentAmount">0</span> <span style="font-size: 1.1rem;">ml</span></div>
+    <div class="target">目標: 2,000 ml</div>
+    
+    <div class="navi-message" id="naviMessage">目標まであと 2,000 ml</div>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="quick-buttons">
+        <button onclick="addWater(100)">+100ml<br><span style="font-size:0.7rem; font-weight:normal;">一口</span></button>
+        <button onclick="addWater(200)">+200ml<br><span style="font-size:0.7rem; font-weight:normal;">コップ1杯</span></button>
+        <button onclick="addWater(250)">+250ml<br><span style="font-size:0.7rem; font-weight:normal;">ボトル半分</span></button>
+    </div>
+
+    <div class="custom-input">
+        <input type="tel" id="customAmount" placeholder="300">
+        <button class="btn-add" onclick="addCustomWater()">追加</button>
+    </div>
+
+    <div class="calendar-section">
+        <div class="calendar-title" id="calendarTitle">2026年 --月</div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <button class="btn-reset" onclick="resetLog()">今日の記録をクリア</button>
+</div>
+
+<script>
+    const TARGET = 2000;
+    
+    function getFormattedDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+    }
+
+    function getTodayString() { return getFormattedDate(new Date()); }
+    function getAmountByDate(dateStr) { return parseInt(localStorage.getItem('water_' + dateStr)) || 0; }
+    function loadTodayData() { return getAmountByDate(getTodayString()); }
+
+    function updateUI() {
+        const amount = loadTodayData();
+        document.getElementById('currentAmount').innerText = amount.toLocaleString();
+        
+        const remaining = TARGET - amount;
+        const naviEl = document.getElementById('naviMessage');
+        const amountDisplay = document.getElementById('amountDisplay');
+        const bar = document.getElementById('progressBar');
+        
+        const todayStr = getTodayString();
+        const hasAlerted = localStorage.getItem('alerted_' + todayStr) === 'true';
+        
+        // スマホバグ回避のため、JavaScript内の色の指定方法を確実なカラーコードへ変更
+        if (remaining <= 0) {
+            naviEl.innerHTML = "🎉 2,000ml達成！ナイスハイドレーション！<br><span style='font-size:0.8rem; font-weight:normal;'>尿酸も塩分もドバドバ流れてます！肝臓・腎臓大喜び！</span>";
+            naviEl.style.color = "#2ecc71";
+            amountDisplay.style.color = "#2ecc71";
+            bar.style.backgroundColor = "#2ecc71";
+            
+            if (!hasAlerted) {
+                localStorage.setItem('alerted_' + todayStr, 'true');
+                setTimeout(function() {
+                    alert("✨ 2,000ml 達成！！ ✨\n素晴らしい自己管理能力です！\n9月の健康診断ハイスコアに向けて、内臓のデトックスはバッチリです！この調子でいきましょう！");
+                }, 300);
+            }
+        } else {
+            amountDisplay.style.color = "#3498db";
+            bar.style.backgroundColor = "#3498db";
+            
+            if (remaining >= 1 && remaining <= 200) {
+                naviEl.innerText = "🔥 あとコップ1杯！ラストスパート！";
+                naviEl.style.color = "#ff3f34";
+            } else if (remaining >= 201 && remaining <= 400) {
+                naviEl.innerText = "💪 あとコップ2杯！頑張ろう！";
+                naviEl.style.color = "#e67e22";
+            } else {
+                naviEl.innerText = "目標まであと " + remaining.toLocaleString() + " ml";
+                naviEl.style.color = "#7f8c8d";
+            }
+        }
+        
+        const percentage = Math.min((amount / TARGET) * 100, 100);
+        bar.style.width = percentage + '%';
+
+        renderCalendar();
+    }
+
+    function addWater(value) {
+        const todayStr = getTodayString();
+        let current = loadTodayData();
+        current += value;
+        localStorage.setItem('water_' + todayStr, current);
+        updateUI();
+    }
+
+    function zenkakuToHankaku(str) {
+        return str.replace(/[０-９]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        });
+    }
+
+    function addCustomWater() {
+        const input = document.getElementById('customAmount');
+        const cleanedValue = zenkakuToHankaku(input.value).replace(/[^0-9]/g, '');
+        const value = parseInt(cleanedValue);
+        
+        if (value > 0) {
+            addWater(value);
+            input.value = '';
+            input.blur();
+        }
+    }
+
+    function resetLog() {
+        if (confirm('今日の記録をゼロにリセットしますか？')) {
+            const todayStr = getTodayString();
+            localStorage.setItem('water_' + todayStr, 0);
+            localStorage.removeItem('alerted_' + todayStr);
+            updateUI();
+        }
+    }
+
+    function renderCalendar() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        
+        document.getElementById('calendarTitle').innerText = year + "年 " + (month + 1) + "月";
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        
+        const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+        dayLabels.forEach(function(label) {
+            const el = document.createElement('div');
+            el.className = 'calendar-day-header';
+            el.innerText = label;
+            grid.appendChild(el);
+        });
+        
+        for (let i = 0; i < firstDay; i++) {
+            const el = document.createElement('div');
+            grid.appendChild(el);
+        }
+        
+        for (let day = 1; day <= lastDate; day++) {
+            const el = document.createElement('div');
+            el.className = 'calendar-day';
+            el.innerText = day;
+            
+            const monthStr = String(month + 1).padStart(2, '0');
+            const dayStr = String(day).padStart(2, '0');
+            const dateStr = year + '-' + monthStr + '-' + dayStr;
+            const amount = getAmountByDate(dateStr);
+            
+            if (amount >= TARGET) {
+                el.classList.add('day-achieved');
+            } else if (amount > 0) {
+                el.classList.add('day-recorded');
+            }
+            
+            el.onclick = function() {
+                alert((month + 1) + "月" + day + "日の水分補給量: " + amount.toLocaleString() + " ml");
+            };
+            
+            grid.appendChild(el);
+        }
+    }
+
+    // 初期日付のセット処理
+    const now = new Date();
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    document.getElementById('currentDate').innerText = now.getFullYear() + "年" + (now.getMonth() + 1) + "月" + now.getDate() + "日 (" + days[now.getDay()] + ")";
+
+    // Enterキーの誤送信防止
+    document.getElementById('customAmount').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addCustomWater();
+        }
+    });
+
+    updateUI();
+</script>
+</body>
+</html>            font-size: 2.3rem;
             font-weight: bold;
             color: var(--primary-color);
             margin: 10px 0;
