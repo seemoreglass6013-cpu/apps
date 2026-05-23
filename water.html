@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水分補給ロガー（ナビ付）</title>
+    <title>水分補給ロガー（応援メッセージ付）</title>
     <style>
         :root {
             --primary-color: #3498db;
@@ -41,13 +41,18 @@
         }
         .target { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 5px; }
         
-        /* ナビゲーションメッセージのスタイル */
+        /* メッセージ表示エリア（少し縦幅を広げました） */
         .navi-message {
             font-size: 1rem;
             font-weight: bold;
             color: #e67e22;
-            height: 24px;
+            min-height: 48px;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            line-height: 1.4;
         }
 
         .progress-container {
@@ -160,7 +165,6 @@
     function getAmountByDate(dateStr) { return parseInt(localStorage.getItem(`water_${dateStr}`)) || 0; }
     function loadTodayData() { return getAmountByDate(getTodayString()); }
 
-    // UI更新（ナビメッセージのロジックをここに追加）
     function updateUI() {
         const amount = loadTodayData();
         document.getElementById('currentAmount').innerText = amount.toLocaleString();
@@ -168,10 +172,23 @@
         const remaining = TARGET - amount;
         const naviEl = document.getElementById('naviMessage');
         
-        // 残り量に応じたメッセージの分岐
+        // 過去のポップアップ発火フラグを取得
+        const todayStr = getTodayString();
+        const hasAlerted = localStorage.getItem(`alerted_${todayStr}`) === 'true';
+        
+        // メッセージと応援コメントの分岐
         if (remaining <= 0) {
-            naviEl.innerText = "🎉 2,000ml達成！ナイスハイドレーション！";
+            naviEl.innerHTML = "🎉 2,000ml達成！ナイスハイドレーション！<br><span style='font-size:0.8rem; font-weight:normal;'>尿酸も塩分もドバドバ流れてます！肝臓・腎臓大喜び！</span>";
             naviEl.style.color = "var(--success-color)";
+            
+            // 今日まだお祝いポップアップを出していなければ、出す！
+            if (!hasAlerted) {
+                localStorage.setItem(`alerted_${todayStr}`, 'true');
+                // 少しだけ時間差をつけて達成感を演出
+                setTimeout(() => {
+                    alert("✨ 2,000ml 達成！！ ✨\n素晴らしい自己管理能力です！\n9月の健康診断ハイスコアに向けて、内臓のデトックスはバッチリです！この調子でいきましょう！");
+                }, 300);
+            }
         } else if (remaining >= 1 && remaining <= 200) {
             naviEl.innerText = "🔥 あとコップ1杯！ラストスパート！";
             naviEl.style.color = "#ff3f34";
@@ -217,7 +234,9 @@
 
     function resetLog() {
         if (confirm('今日の記録をゼロにリセットしますか？')) {
-            localStorage.setItem(`water_${getTodayString()}`, 0);
+            const todayStr = getTodayString();
+            localStorage.setItem(`water_${todayStr}`, 0);
+            localStorage.removeItem(`alerted_${todayStr}`); // ポップアップフラグもリセット
             updateUI();
         }
     }
@@ -268,6 +287,14 @@
             grid.appendChild(el);
         }
     }
+
+    // Enterキーの誤送信防止
+    document.getElementById('customAmount').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addCustomWater();
+        }
+    });
 
     const now = new Date();
     const days = ['日', '月', '火', '水', '木', '金', '土'];
