@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>水分補給ロガー</title>
+    <title>水分補給ロガー（ナビ付）</title>
     <style>
         :root {
             --primary-color: #3498db;
+            --success-color: #2ecc71;
             --bg-color: #f5f7fa;
             --card-bg: #ffffff;
             --text-color: #2c3e50;
@@ -29,17 +30,33 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             text-align: center;
         }
-        h1 { font-size: 1.5rem; margin-bottom: 5px; }
-        .date { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 25px; }
+        h1 { font-size: 1.4rem; margin-bottom: 5px; }
+        .date { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 20px; }
         
-        /* メーター部分 */
+        .amount-display {
+            font-size: 2.3rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+        .target { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 5px; }
+        
+        /* ナビゲーションメッセージのスタイル */
+        .navi-message {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #e67e22;
+            height: 24px;
+            margin-bottom: 15px;
+        }
+
         .progress-container {
             position: relative;
-            height: 24px;
+            height: 20px;
             background-color: #ecf0f1;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         .progress-bar {
             height: 100%;
@@ -47,78 +64,64 @@
             background-color: var(--primary-color);
             transition: width 0.4s ease;
         }
-        .amount-display {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
-            margin: 10px 0;
-        }
-        .target { font-size: 0.9rem; color: #7f8c8d; margin-bottom: 30px; }
 
-        /* ボタンエリア */
         .quick-buttons {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
         button {
             border: none;
             background-color: #ebf5fb;
             color: var(--primary-color);
             padding: 12px 5px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: bold;
             border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.1s;
         }
-        button:active {
-            transform: scale(0.95);
-            background-color: var(--primary-color);
-            color: white;
-        }
+        button:active { transform: scale(0.95); }
 
-        /* カスタム入力エリア */
         .custom-input {
             display: flex;
             gap: 10px;
             justify-content: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         input[type="number"] {
-            width: 80px;
-            padding: 10px;
+            width: 70px;
+            padding: 8px;
             border: 1px solid #bdc3c7;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             text-align: center;
         }
-        .btn-add {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-        }
-        .btn-reset {
-            background-color: #e74c3c;
-            color: white;
-            padding: 8px 15px;
-            font-size: 0.8rem;
-            border-radius: 6px;
-            margin-top: 15px;
-            opacity: 0.7;
-        }
+        .btn-add { background-color: var(--primary-color); color: white; padding: 8px 15px; border-radius: 8px; }
+
+        .calendar-section { margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px; }
+        .calendar-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; color: #34495e; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .calendar-day-header { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; padding: 5px 0; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border-radius: 6px; background-color: #f8f9fa; cursor: pointer; font-weight: 500; }
+        
+        .day-achieved { background-color: #d4edda !important; color: #155724; font-weight: bold; }
+        .day-recorded { background-color: #d1ecf1 !important; color: #0c5460; }
+        
+        .btn-reset { background-color: #e74c3c; color: white; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; margin-top: 20px; opacity: 0.6; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>💧 水分補給ログ</h1>
-    <div class="date" id="currentDate">2026年--月--日</div>
+    <div class="date" id="currentDate">----年--月--日</div>
 
-    <div class="amount-display"><span id="currentAmount">0</span> <span style="font-size: 1.2rem;">ml</span></div>
+    <div class="amount-display"><span id="currentAmount">0</span> <span style="font-size: 1.1rem;">ml</span></div>
     <div class="target">目標: 2,000 ml</div>
+    
+    <div class="navi-message" id="naviMessage">目標まであと 2,000 ml</div>
 
     <div class="progress-container">
         <div class="progress-bar" id="progressBar"></div>
@@ -135,92 +138,141 @@
         <button class="btn-add" onclick="addCustomWater()">追加</button>
     </div>
 
-    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-    <button class="btn-reset" onclick="resetLog()">今日の記録をリセット</button>
+    <div class="calendar-section">
+        <div class="calendar-title" id="calendarTitle">2026年 --月</div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <button class="btn-reset" onclick="resetLog()">今日の記録をクリア</button>
 </div>
 
 <script>
     const TARGET = 2000;
     
-    // 今日の日付を取得 (YYYY-MM-DD)
-    function getTodayString() {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
+    function getFormattedDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
     }
 
-    // 日付の表示更新
-    function displayDate() {
-        const now = new Date();
-        const days = ['日', '月', '火', '水', '木', '金', '土'];
-        document.getElementById('currentDate').innerText = 
-            `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 (${days[now.getDay()]})`;
-    }
+    function getTodayString() { return getFormattedDate(new Date()); }
+    function getAmountByDate(dateStr) { return parseInt(localStorage.getItem(`water_${dateStr}`)) || 0; }
+    function loadTodayData() { return getAmountByDate(getTodayString()); }
 
-    // データの読み込み
-    function loadData() {
-        const todayStr = getTodayString();
-        const savedDate = localStorage.getItem('water_log_date');
-        
-        // 日付が変わっていたらリセット
-        if (savedDate !== todayStr) {
-            localStorage.setItem('water_log_date', todayStr);
-            localStorage.setItem('water_log_amount', 0);
-            return 0;
-        }
-        
-        return parseInt(localStorage.getItem('water_log_amount')) || 0;
-    }
-
-    // 画面の更新
+    // UI更新（ナビメッセージのロジックをここに追加）
     function updateUI() {
-        const amount = loadData();
+        const amount = loadTodayData();
         document.getElementById('currentAmount').innerText = amount.toLocaleString();
         
-        // プログレスバーの計算
-        const percentage = Math.min((amount / TARGET) * 100, 100);
-        document.getElementById('progressBar').style.width = percentage + '%';
+        const remaining = TARGET - amount;
+        const naviEl = document.getElementById('naviMessage');
         
-        // 目標達成時の色変化（おまけ）
-        if (amount >= TARGET) {
-            document.getElementById('currentAmount').style.color = '#2ecc71';
-            document.getElementById('progressBar').style.backgroundColor = '#2ecc71';
+        // 残り量に応じたメッセージの分岐
+        if (remaining <= 0) {
+            naviEl.innerText = "🎉 2,000ml達成！ナイスハイドレーション！";
+            naviEl.style.color = "var(--success-color)";
+        } else if (remaining >= 1 && remaining <= 200) {
+            naviEl.innerText = "🔥 あとコップ1杯！ラストスパート！";
+            naviEl.style.color = "#ff3f34";
+        } else if (remaining >= 201 && remaining <= 400) {
+            naviEl.innerText = "💪 あとコップ2杯！頑張ろう！";
+            naviEl.style.color = "#e67e22";
         } else {
-            document.getElementById('currentAmount').style.color = '#3498db';
-            document.getElementById('progressBar').style.backgroundColor = '#3498db';
+            naviEl.innerText = `目標まであと ${remaining.toLocaleString()} ml`;
+            naviEl.style.color = "#7f8c8d";
         }
+        
+        const percentage = Math.min((amount / TARGET) * 100, 100);
+        const bar = document.getElementById('progressBar');
+        bar.style.width = percentage + '%';
+        
+        if (amount >= TARGET) {
+            document.getElementById('currentAmount').style.color = var(--success-color);
+            bar.style.backgroundColor = var(--success-color);
+        } else {
+            document.getElementById('currentAmount').style.color = var(--primary-color);
+            bar.style.backgroundColor = var(--primary-color);
+        }
+
+        renderCalendar();
     }
 
-    // 水分を追加
     function addWater(value) {
-        let current = loadData();
+        const todayStr = getTodayString();
+        let current = loadTodayData();
         current += value;
-        localStorage.setItem('water_log_amount', current);
+        localStorage.setItem(`water_${todayStr}`, current);
         updateUI();
     }
 
-    // カスタム入力の追加
     function addCustomWater() {
         const input = document.getElementById('customAmount');
         const value = parseInt(input.value);
         if (value > 0) {
             addWater(value);
-            input.value = ''; // 入力欄をクリア
+            input.value = '';
         }
     }
 
-    // 手動リセット
     function resetLog() {
         if (confirm('今日の記録をゼロにリセットしますか？')) {
-            localStorage.setItem('water_log_amount', 0);
+            localStorage.setItem(`water_${getTodayString()}`, 0);
             updateUI();
         }
     }
 
-    // 初期化
-    displayDate();
+    function renderCalendar() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        
+        document.getElementById('calendarTitle').innerText = `${year}年 ${month + 1}月`;
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        
+        const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+        dayLabels.forEach(label => {
+            const el = document.createElement('div');
+            el.className = 'calendar-day-header';
+            el.innerText = label;
+            grid.appendChild(el);
+        });
+        
+        for (let i = 0; i < firstDay; i++) {
+            const el = document.createElement('div');
+            grid.appendChild(el);
+        }
+        
+        for (let day = 1; day <= lastDate; day++) {
+            const el = document.createElement('div');
+            el.className = 'calendar-day';
+            el.innerText = day;
+            
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const amount = getAmountByDate(dateStr);
+            
+            if (amount >= TARGET) {
+                el.classList.add('day-achieved');
+            } else if (amount > 0) {
+                el.classList.add('day-recorded');
+            }
+            
+            el.onclick = () => {
+                alert(`${month + 1}月${day}日の水分補給量: ${amount.toLocaleString()} ml`);
+            };
+            
+            grid.appendChild(el);
+        }
+    }
+
+    const now = new Date();
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    document.getElementById('currentDate').innerText = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 (${days[now.getDay()]})`;
+
     updateUI();
 </script>
 </body>
