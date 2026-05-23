@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水分補給ロガー</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 5px; }
+        .date { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 25px; }
+        
+        /* メーター部分 */
+        .progress-container {
+            position: relative;
+            height: 24px;
+            background-color: #ecf0f1;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--primary-color);
+            transition: width 0.4s ease;
+        }
+        .amount-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+        .target { font-size: 0.9rem; color: #7f8c8d; margin-bottom: 30px; }
+
+        /* ボタンエリア */
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        button {
+            border: none;
+            background-color: #ebf5fb;
+            color: var(--primary-color);
+            padding: 12px 5px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:active {
+            transform: scale(0.95);
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* カスタム入力エリア */
+        .custom-input {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: center;
+        }
+        .btn-add {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        .btn-reset {
+            background-color: #e74c3c;
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.8rem;
+            border-radius: 6px;
+            margin-top: 15px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>💧 水分補給ログ</h1>
+    <div class="date" id="currentDate">2026年--月--日</div>
+
+    <div class="amount-display"><span id="currentAmount">0</span> <span style="font-size: 1.2rem;">ml</span></div>
+    <div class="target">目標: 2,000 ml</div>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="quick-buttons">
+        <button onclick="addWater(100)">+100ml<br><span style="font-size:0.7rem; font-weight:normal;">一口</span></button>
+        <button onclick="addWater(200)">+200ml<br><span style="font-size:0.7rem; font-weight:normal;">コップ1杯</span></button>
+        <button onclick="addWater(250)">+250ml<br><span style="font-size:0.7rem; font-weight:normal;">ボトル半分</span></button>
+    </div>
+
+    <div class="custom-input">
+        <input type="number" id="customAmount" placeholder="300" min="0">
+        <button class="btn-add" onclick="addCustomWater()">追加</button>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+    <button class="btn-reset" onclick="resetLog()">今日の記録をリセット</button>
+</div>
+
+<script>
+    const TARGET = 2000;
+    
+    // 今日の日付を取得 (YYYY-MM-DD)
+    function getTodayString() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // 日付の表示更新
+    function displayDate() {
+        const now = new Date();
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        document.getElementById('currentDate').innerText = 
+            `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 (${days[now.getDay()]})`;
+    }
+
+    // データの読み込み
+    function loadData() {
+        const todayStr = getTodayString();
+        const savedDate = localStorage.getItem('water_log_date');
+        
+        // 日付が変わっていたらリセット
+        if (savedDate !== todayStr) {
+            localStorage.setItem('water_log_date', todayStr);
+            localStorage.setItem('water_log_amount', 0);
+            return 0;
+        }
+        
+        return parseInt(localStorage.getItem('water_log_amount')) || 0;
+    }
+
+    // 画面の更新
+    function updateUI() {
+        const amount = loadData();
+        document.getElementById('currentAmount').innerText = amount.toLocaleString();
+        
+        // プログレスバーの計算
+        const percentage = Math.min((amount / TARGET) * 100, 100);
+        document.getElementById('progressBar').style.width = percentage + '%';
+        
+        // 目標達成時の色変化（おまけ）
+        if (amount >= TARGET) {
+            document.getElementById('currentAmount').style.color = '#2ecc71';
+            document.getElementById('progressBar').style.backgroundColor = '#2ecc71';
+        } else {
+            document.getElementById('currentAmount').style.color = '#3498db';
+            document.getElementById('progressBar').style.backgroundColor = '#3498db';
+        }
+    }
+
+    // 水分を追加
+    function addWater(value) {
+        let current = loadData();
+        current += value;
+        localStorage.setItem('water_log_amount', current);
+        updateUI();
+    }
+
+    // カスタム入力の追加
+    function addCustomWater() {
+        const input = document.getElementById('customAmount');
+        const value = parseInt(input.value);
+        if (value > 0) {
+            addWater(value);
+            input.value = ''; // 入力欄をクリア
+        }
+    }
+
+    // 手動リセット
+    function resetLog() {
+        if (confirm('今日の記録をゼロにリセットしますか？')) {
+            localStorage.setItem('water_log_amount', 0);
+            updateUI();
+        }
+    }
+
+    // 初期化
+    displayDate();
+    updateUI();
+</script>
+</body>
+</html>
