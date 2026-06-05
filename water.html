@@ -115,7 +115,10 @@
         .day-achieved { background-color: #d4edda !important; color: #155724; font-weight: bold; }
         .day-recorded { background-color: #d1ecf1 !important; color: #0c5460; }
         
-        .btn-reset { background-color: #e74c3c; color: white; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; margin-top: 20px; opacity: 0.6; }
+        .btn-export { background-color: #2ecc71; color: white; width: 100%; max-width: 280px; padding: 10px 15px; font-size: 0.9rem; font-weight: bold; border-radius: 8px; margin-top: 20px; margin-bottom: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-export:active { transform: scale(0.98); }
+        
+        .btn-reset { background-color: #e74c3c; color: white; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; margin-top: 15px; opacity: 0.6; }
     </style>
 </head>
 <body>
@@ -149,11 +152,15 @@
         <div class="calendar-grid" id="calendarGrid"></div>
     </div>
 
+    <!-- ボタンのテキストも分かりやすく変更 -->
+    <button class="btn-export" onclick="exportWeeklyLog()">📊 過去7日間のログをコピー(今日を除く)</button>
+    <br>
     <button class="btn-reset" onclick="resetLog()">今日の記録をクリア</button>
 </div>
 
 <script>
     const TARGET = 2000;
+    const daysArr = ['日', '月', '火', '水', '木', '金', '土'];
     
     function getFormattedDate(date) {
         const y = date.getFullYear();
@@ -247,6 +254,45 @@
         }
     }
 
+    /* 前日（昨日）から過去7日間を遡って出力するようロジックを修正 */
+    function exportWeeklyLog() {
+        let logText = "【水分補給ログ（過去7日間・今日を除く）】\n";
+        const now = new Date();
+        
+        // iの開始を7、終了を1にすることで、今日(0日前)を含めず、7日前〜1日前（昨日）をループします
+        for (let i = 7; i >= 1; i--) {
+            const targetDate = new Date();
+            targetDate.setDate(now.getDate() - i);
+            
+            const dateStr = getFormattedDate(targetDate);
+            const amount = getAmountByDate(dateStr);
+            const dayName = daysArr[targetDate.getDay()];
+            const isAchieved = amount >= TARGET ? "〇" : "×";
+            
+            logText += `${targetDate.getMonth() + 1}/${targetDate.getDate()}(${dayName}): ${amount.toLocaleString()} ml [達成:${isAchieved}]\n`;
+        }
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(logText).then(() => {
+                alert("📋 昨日までの過去7日間のログをコピーしました！");
+            }).catch(err => {
+                alert("コピーに失敗しました。もう一度お試しください。");
+            });
+        } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = logText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert("📋 昨日までの過去7日間のログをコピーしました！");
+            } catch (err) {
+                alert("コピーできませんでした。");
+            }
+            document.body.removeChild(textArea);
+        }
+    }
+
     function renderCalendar() {
         const now = new Date();
         const year = now.getFullYear();
@@ -259,7 +305,7 @@
         const grid = document.getElementById('calendarGrid');
         grid.innerHTML = '';
         
-        const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+        dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
         dayLabels.forEach(function(label) {
             const el = document.createElement('div');
             el.className = 'calendar-day-header';
@@ -297,8 +343,7 @@
     }
 
     const now = new Date();
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    document.getElementById('currentDate').innerText = now.getFullYear() + "年" + (now.getMonth() + 1) + "月" + now.getDate() + "日 (" + days[now.getDay()] + ")";
+    document.getElementById('currentDate').innerText = now.getFullYear() + "年" + (now.getMonth() + 1) + "月" + now.getDate() + "日 (" + daysArr[now.getDay()] + ")";
 
     document.getElementById('customAmount').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
